@@ -44,7 +44,31 @@ def verify_key(key: Optional[str] = None):
 @router.post("/tts")
 async def generate_tts(req: TTSRequest):
     verify_key(req.key)
-    
+    return await _process_tts(req)
+
+@router.get("/tts")
+async def generate_tts_get(
+    text: str,
+    voice: Optional[str] = None,
+    speed: Optional[int] = None,
+    volume: Optional[int] = None,
+    audio_type: Optional[str] = None,
+    stream: Optional[bool] = True,
+    key: Optional[str] = None
+):
+    req = TTSRequest(
+        text=text,
+        voice=voice,
+        speed=speed,
+        volume=volume,
+        audio_type=audio_type,
+        stream=stream,
+        key=key
+    )
+    verify_key(key)
+    return await _process_tts(req)
+
+async def _process_tts(req: TTSRequest):
     settings = config.get_settings()
     
     voice = req.voice or settings.get("default_speaker", "聆小糖")
@@ -56,18 +80,9 @@ async def generate_tts(req: TTSRequest):
         url = xf_service.get_audio_url(req.text, voice, speed, volume, audio_type=audio_type)
         
         if req.stream:
-            # Return stream
             resp = xf_service.get_audio_stream(url)
             return StreamingResponse(resp.iter_content(chunk_size=4096), media_type=audio_type)
         else:
-            # Return URL or redirect? Requirement says "api proxy", usually implies returning the audio content.
-            # But "stream=False" might imply returning the full file at once or just the URL?
-            # Let's assume stream=False means we fetch it all and return it, or just return the URL if requested?
-            # Standard TTS APIs usually return audio.
-            # Let's return the audio content fully buffered if not streaming, or just stream it anyway but with different headers?
-            # Actually, for a proxy, streaming is usually best.
-            # If the user wants the URL, maybe we can have a separate endpoint or param.
-            # But for now, let's just stream it.
             resp = xf_service.get_audio_stream(url)
             return StreamingResponse(resp.iter_content(chunk_size=4096), media_type=audio_type)
             
