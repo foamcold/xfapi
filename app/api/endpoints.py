@@ -5,6 +5,7 @@ from typing import Optional
 from app.core.config import config
 from app.services.xf_service import xf_service
 import os
+import json
 
 router = APIRouter()
 
@@ -81,7 +82,20 @@ async def _process_tts(req: TTSRequest):
     speakers = config.get_speakers()
     found_speaker = next((s for s in speakers if s.get("name") == voice), None)
     if found_speaker:
-        voice = found_speaker.get("param", voice)
+        param = found_speaker.get("param")
+        if param == '@style':
+            try:
+                extend_ui = json.loads(found_speaker.get("extendUI", "[]"))
+                if isinstance(extend_ui, list):
+                    style_item = next((item for item in extend_ui if item.get("code") == "style"), None)
+                    if style_item and style_item.get("value"):
+                        voice = style_item["value"]
+            except Exception as e:
+                print(f"Error parsing extendUI for speaker {voice}: {e}")
+                # Fallback to param (which is @style, likely to fail but better than crashing here)
+                voice = param
+        else:
+            voice = param
     
     try:
         url = xf_service.get_audio_url(req.text, voice, speed, volume, audio_type=audio_type)
