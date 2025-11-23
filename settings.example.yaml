@@ -1,0 +1,7 @@
+admin_password: admin
+auth_enabled: false
+default_audio_type: audio/mp3
+default_speaker: 聆小糖
+default_speed: 100
+default_volume: 100
+special_symbol_mapping: false

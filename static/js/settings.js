@@ -1,0 +1,125 @@
+document.addEventListener('DOMContentLoaded', async () => {
+    const loginModal = document.getElementById('login-modal');
+    const loginBtn = document.getElementById('login-btn');
+    const authKeyInput = document.getElementById('auth-key');
+    const saveBtn = document.getElementById('save-btn');
+
+    let authKey = localStorage.getItem('xfapi_key') || '';
+
+    // Check auth
+    async function checkAuth() {
+        try {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: authKey })
+            });
+            if (res.status === 401) {
+                loginModal.classList.remove('hidden');
+            } else {
+                loadSettings();
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    loginBtn.addEventListener('click', async () => {
+        const key = authKeyInput.value;
+        const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: key })
+        });
+        if (res.ok) {
+            authKey = key;
+            localStorage.setItem('xfapi_key', authKey);
+            loginModal.classList.add('hidden');
+            loadSettings();
+        } else {
+            alert('密码错误');
+        }
+    });
+
+    async function loadSettings() {
+        try {
+            // Load speakers for dropdown
+            const spkRes = await fetch('/api/speakers');
+            const speakers = await spkRes.json();
+            const spkSelect = document.getElementById('default-speaker');
+            speakers.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.name;
+                opt.textContent = s.name;
+                spkSelect.appendChild(opt);
+            });
+
+            // Load settings
+            const res = await fetch(`/api/settings?key=${authKey}`);
+            if (res.ok) {
+                const settings = await res.json();
+
+                document.getElementById('auth-enabled').checked = settings.auth_enabled;
+                document.getElementById('admin-password').value = settings.admin_password || '';
+                document.getElementById('special-symbol-mapping').checked = settings.special_symbol_mapping;
+                document.getElementById('default-speaker').value = settings.default_speaker || '聆小糖';
+                document.getElementById('default-speed').value = settings.default_speed || 100;
+                document.getElementById('default-volume').value = settings.default_volume || 100;
+                document.getElementById('default-audio-type').value = settings.default_audio_type || 'audio/mp3';
+            }
+        } catch (e) {
+            console.error('Failed to load settings', e);
+        }
+    }
+
+    if (saveBtn) {
+        saveBtn.addEventListener('click', async () => {
+            const settings = {
+                auth_enabled: document.getElementById('auth-enabled')?.checked || false,
+                admin_password: document.getElementById('admin-password')?.value || '',
+                special_symbol_mapping: document.getElementById('special-symbol-mapping')?.checked || false,
+                default_speaker: document.getElementById('default-speaker')?.value || '',
+                default_speed: parseInt(document.getElementById('default-speed')?.value || 100),
+                default_volume: parseInt(document.getElementById('default-volume')?.value || 100),
+                default_audio_type: document.getElementById('default-audio-type')?.value || 'audio/mp3',
+                key: authKey
+            };
+
+            try {
+                const res = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+
+                if (res.ok) {
+                    alert('设置已保存');
+                    // If password changed, update local key
+                    if (settings.admin_password && settings.auth_enabled) {
+                        authKey = settings.admin_password;
+                        localStorage.setItem('xfapi_key', authKey);
+                    }
+                } else {
+                    const err = await res.json();
+                    alert('保存失败: ' + err.detail);
+                }
+            } catch (e) {
+                alert('保存失败: ' + e.message);
+            }
+        });
+    }
+
+    checkAuth();
+
+    // Password Toggle
+    const togglePassword = document.getElementById('toggle-password');
+    const passwordInput = document.getElementById('admin-password');
+
+    if (togglePassword && passwordInput) {
+        togglePassword.addEventListener('click', () => {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            togglePassword.textContent = type === 'password' ? '👁️' : '🔒';
+        });
+    }
+});

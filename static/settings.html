@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XFAPI - 设置</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+</head>
+
+<body>
+    <div id="login-modal" class="hidden">
+        <div class="modal-content">
+            <h3>需要验证</h3>
+            <input type="password" id="auth-key" placeholder="请输入管理密码">
+            <button id="login-btn">进入</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>XFAPI</h1>
+            <nav>
+                <a href="/">语音生成</a>
+                <a href="/settings_page" class="active">设置</a>
+            </nav>
+        </header>
+
+        <div class="main-content" style="flex-direction: column;">
+            <div class="settings-section">
+                <h3>安全设置</h3>
+                <div class="form-group">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="auth-enabled" class="toggle-input">
+                        <span class="toggle-slider"></span>
+                        启用登录鉴权
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>管理密码</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="admin-password" placeholder="设置管理密码">
+                        <span class="password-toggle" id="toggle-password">👁️</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>默认参数</h3>
+                <div class="form-group">
+                    <label>默认发音人</label>
+                    <select id="default-speaker">
+                        <!-- Loaded dynamically -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>默认语速</label>
+                    <input type="number" id="default-speed" min="0" max="300">
+                </div>
+                <div class="form-group">
+                    <label>默认音量</label>
+                    <input type="number" id="default-volume" min="0" max="300">
+                </div>
+                <div class="form-group">
+                    <label>默认音频类型</label>
+                    <select id="default-audio-type">
+                        <option value="audio/mp3">MP3</option>
+                        <option value="audio/wav">WAV</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>功能设置</h3>
+                <div class="form-group">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="special-symbol-mapping" class="toggle-input">
+                        <span class="toggle-slider"></span>
+                        启用特殊符号映射
+                    </label>
+                    <small style="color: #aaa; margin-top: 0.5rem;">将 #, @, & 等符号转换为中文读音</small>
+                </div>
+            </div>
+
+            <button id="save-btn">保存设置</button>
+        </div>
+    </div>
+
+    <script src="/static/js/settings.js"></script>
+</body>
+
+</html>

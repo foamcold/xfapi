@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+pyyaml
+pycryptodome
+requests
+python-multipart
