@@ -76,6 +76,13 @@ async def _process_tts(req: TTSRequest):
     volume = req.volume if req.volume is not None else settings.get("default_volume", 100)
     audio_type = req.audio_type or settings.get("default_audio_type", "audio/mp3")
     
+    # Resolve speaker name to code if needed
+    # The API requires the 'param' (code), but user might pass 'name' or default might be a name.
+    speakers = config.get_speakers()
+    found_speaker = next((s for s in speakers if s.get("name") == voice), None)
+    if found_speaker:
+        voice = found_speaker.get("param", voice)
+    
     try:
         url = xf_service.get_audio_url(req.text, voice, speed, volume, audio_type=audio_type)
         

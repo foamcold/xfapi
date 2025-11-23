@@ -54,20 +54,43 @@ python main.py
 
 ### 核心接口
 
-**GET /api/tts**
+**GET / POST /api/tts**
 
 生成语音。
 
-参数：
-- `text`: 要转换的文本
-- `voice_code`: 发音人代码 (默认: 聆小糖)
-- `speed`: 语速 (0-300, 默认: 100)
-- `volume`: 音量 (0-300, 默认: 100)
-- `stream`: 是否流式返回 (默认: true)
+参数说明：
 
-示例：
+| 参数名 | 类型 | 必填 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| `text` | string | 是 | - | 要转换的文本内容 |
+| `voice` | string | 否 | 聆小糖 | 发音人名称（如"聆小糖"）或发音人ID代码（如"565854553"）。后端会自动识别。 |
+| `speed` | int | 否 | 100 | 语速，范围 0-300 |
+| `volume` | int | 否 | 100 | 音量，范围 0-300 |
+| `audio_type` | string | 否 | audio/mp3 | 音频格式，支持 `audio/mp3` 或 `audio/wav` |
+| `stream` | boolean | 否 | true | 是否流式返回音频数据 |
+| `key` | string | 否 | - | 鉴权密钥（如果开启了鉴权功能，则必填） |
+
+**GET 请求示例：**
+
 ```
-http://localhost:8000/api/tts?text=你好世界&speed=100
+http://localhost:8000/api/tts?text=你好世界&voice=聆小糖&speed=100
+```
+
+**POST 请求示例：**
+
+```json
+POST /api/tts
+Content-Type: application/json
+
+{
+    "text": "你好世界",
+    "voice": "565854553",
+    "speed": 100,
+    "volume": 100,
+    "audio_type": "audio/mp3",
+    "stream": true,
+    "key": "your_admin_password"
+}
 ```
 
 ## 扩展发音人 (MultiTTS 兼容)
