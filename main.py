@@ -29,8 +29,12 @@ app = FastAPI(title="XFAPI - iFLYTEK TTS Proxy", lifespan=lifespan)
 
 app.include_router(router, prefix="/api")
 
+import os
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 # Mount multitts for avatars
+if not os.path.exists("multitts"):
+    os.makedirs("multitts")
 app.mount("/multitts", StaticFiles(directory="multitts"), name="multitts")
 
 @app.get("/")
