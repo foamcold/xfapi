@@ -77,16 +77,21 @@
                     <label class="toggle-switch">
                         <input type="checkbox" id="special-symbol-mapping" class="toggle-input">
                         <span class="toggle-slider"></span>
+
                         启用特殊符号映射
                     </label>
                     <small style="color: #aaa; margin-top: 0.5rem;">将 #, @, & 等符号转换为中文读音</small>
                 </div>
             </div>
 
-            <button id="save-btn">保存设置</button>
+            <div class="button-group" style="display: flex; gap: 1rem; margin-top: 2rem;">
+                <button id="reload-btn" style="background-color: #6c757d; flex: 1;">重载配置</button>
+                <button id="save-btn" style="flex: 1;">保存设置</button>
+            </div>
         </div>
     </div>
 
+    <script src="/static/js/modal.js"></script>
     <script src="/static/js/settings.js"></script>
 </body>
 

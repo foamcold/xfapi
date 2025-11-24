@@ -151,3 +151,10 @@ async def login(req: dict):
     key = req.get("key")
     verify_key(key)
     return {"status": "success"}
+
+@router.post("/reload_config")
+async def reload_config(req: dict):
+    key = req.get("key")
+    verify_key(key)
+    config.reload_config()
+    return {"status": "success", "message": "Configuration reloaded"}

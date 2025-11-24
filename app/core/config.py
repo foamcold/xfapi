@@ -88,4 +88,7 @@ class Config:
         with open("settings.yaml", "w", encoding="utf-8") as f:
             yaml.dump(self.settings, f, allow_unicode=True)
 
+    def reload_config(self):
+        self.load_config()
+
 config = Config()

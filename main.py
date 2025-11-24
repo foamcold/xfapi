@@ -7,16 +7,22 @@ import uvicorn
 from app.core.config import config
 
 from contextlib import asynccontextmanager
+import asyncio
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = config.get_settings()
     port = settings.get("port", 8501)
-    print("\n" + "="*50)
-    print("XFAPI 服务已启动")
-    print(f"Web 界面: http://localhost:{port}")
-    print(f"API 文档: http://localhost:{port}/docs")
-    print("="*50 + "\n")
+    
+    async def print_banner():
+        await asyncio.sleep(1)
+        print("\n" + "="*50)
+        print("XFAPI 服务已启动")
+        print(f"Web 界面: http://localhost:{port}")
+        print(f"API 文档: http://localhost:{port}/docs")
+        print("="*50 + "\n")
+        
+    asyncio.create_task(print_banner())
     yield
 
 app = FastAPI(title="XFAPI - iFLYTEK TTS Proxy", lifespan=lifespan)

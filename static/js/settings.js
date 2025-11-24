@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             loginModal.classList.add('hidden');
             loadSettings();
         } else {
-            alert('密码错误');
+            await showAlert('密码错误');
         }
     });
 
@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
 
                 if (res.ok) {
-                    alert('设置已保存');
+                    await showAlert('设置已保存');
                     // If password changed, update local key
                     if (settings.admin_password && settings.auth_enabled) {
                         authKey = settings.admin_password;
@@ -101,10 +101,37 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 } else {
                     const err = await res.json();
-                    alert('保存失败: ' + err.detail);
+                    await showAlert('保存失败: ' + err.detail);
                 }
             } catch (e) {
-                alert('保存失败: ' + e.message);
+                await showAlert('保存失败: ' + e.message);
+            }
+        });
+    }
+
+    const reloadBtn = document.getElementById('reload-btn');
+    if (reloadBtn) {
+        reloadBtn.addEventListener('click', async () => {
+            const confirmed = await showConfirm('确定要重载配置吗？这将重新读取 config.yaml 并扫描 multitts 目录。');
+            if (!confirmed) {
+                return;
+            }
+            try {
+                const res = await fetch('/api/reload_config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: authKey })
+                });
+                if (res.ok) {
+                    await showAlert('配置重载成功！');
+                    // Reload speakers dropdown
+                    loadSettings();
+                } else {
+                    const err = await res.json();
+                    await showAlert('重载失败: ' + (err.detail || '未知错误'));
+                }
+            } catch (e) {
+                await showAlert('重载失败: ' + e.message);
             }
         });
     }
