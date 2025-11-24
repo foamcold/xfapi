@@ -48,6 +48,8 @@ async def read_settings():
 
 
 if __name__ == "__main__":
+    import colorama
+    colorama.init()
     import copy
     settings = config.get_settings()
     port = settings.get("port", 8501)

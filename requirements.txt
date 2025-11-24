@@ -4,3 +4,4 @@ pyyaml
 pycryptodome
 requests
 python-multipart
+colorama
