@@ -17,6 +17,20 @@ XFAPI 是一个基于 FastAPI 构建的讯飞配音（peiyin.xunfei.cn）逆向 
 
 确保已安装 Python 3.8+。
 
+建议使用虚拟环境运行本项目，以避免依赖冲突：
+
+**Windows:**
+```bash
+python -m venv venv
+.\venv\Scripts\activate
+```
+
+**Linux/macOS:**
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
 ### 2. 安装依赖
 
 ```bash
@@ -31,7 +45,7 @@ pip install -r requirements.txt
 cp settings.example.yaml settings.yaml
 ```
 
-根据需要修改 `settings.yaml` 中的配置（如管理密码、默认发音人等）。
+根据需要修改 `settings.yaml` 中的配置（如管理密码、默认发音人、端口等）。
 
 ### 4. 启动服务
 
@@ -39,18 +53,18 @@ cp settings.example.yaml settings.yaml
 python main.py
 ```
 
-服务默认运行在 `http://0.0.0.0:8000`。
+服务默认运行在 `http://0.0.0.0:8501`（可在 `settings.yaml` 中修改）。
 
 ## 使用说明
 
 ### Web 界面
 
-访问 `http://localhost:8000` 即可进入 Web 界面进行语音合成测试。
-访问 `http://localhost:8000/settings_page` 进入设置页面。
+访问 `http://localhost:8501` 即可进入 Web 界面进行语音合成测试。
+访问 `http://localhost:8501/settings_page` 进入设置页面。
 
 ### API 文档
 
-启动服务后，访问 `http://localhost:8000/docs` 查看完整的 Swagger API 文档。
+启动服务后，访问 `http://localhost:8501/docs` 查看完整的 Swagger API 文档。
 
 ### 核心接口
 
@@ -73,7 +87,7 @@ python main.py
 **GET 请求示例：**
 
 ```
-http://localhost:8000/api/tts?text=你好世界&voice=聆小糖&speed=100
+http://localhost:8501/api/tts?text=你好世界&voice=聆小糖&speed=100
 ```
 
 **POST 请求示例：**
