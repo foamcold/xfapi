@@ -21,20 +21,24 @@ class TTSRequest(BaseModel):
 class SettingsUpdate(BaseModel):
     auth_enabled: Optional[bool] = None
     admin_password: Optional[str] = None
-    special_symbol_mapping: Optional[bool] = None
+    special_symbol_mapping: Optional[dict] = None
     default_speaker: Optional[str] = None
     default_speed: Optional[int] = None
     default_volume: Optional[int] = None
     default_audio_type: Optional[str] = None
+    generation_interval: Optional[float] = None
+    cache_limit: Optional[int] = None
     key: Optional[str] = None
 
 def verify_key(key: Optional[str] = None):
+    """验证API密钥"""
     settings = config.get_settings()
-    auth_enabled = settings.get("auth_enabled", False) or os.getenv("AUTH_ENABLED", "false").lower() == "true"
     
-    if not auth_enabled:
+    # 如果认证未启用，直接返回
+    if not settings.get("auth_enabled", False):
         return True
-        
+    
+    # 如果认证已启用，检查密钥
     admin_password = settings.get("admin_password", "admin") or os.getenv("ADMIN_PASSWORD", "admin")
     
     if key == admin_password:
@@ -98,13 +102,12 @@ async def _process_tts(req: TTSRequest):
             voice = param
     
     try:
-        url = xf_service.get_audio_url(req.text, voice, speed, volume, audio_type=audio_type)
+        # Use the queue processing method
+        resp = await xf_service.process_tts_request(req.text, voice, speed, volume, audio_type=audio_type)
         
         if req.stream:
-            resp = xf_service.get_audio_stream(url)
             return StreamingResponse(resp.iter_content(chunk_size=4096), media_type=audio_type)
         else:
-            resp = xf_service.get_audio_stream(url)
             return StreamingResponse(resp.iter_content(chunk_size=4096), media_type=audio_type)
             
     except Exception as e:
@@ -142,6 +145,10 @@ async def update_settings(req: SettingsUpdate):
         config.update_setting("default_volume", req.default_volume)
     if req.default_audio_type is not None:
         config.update_setting("default_audio_type", req.default_audio_type)
+    if req.generation_interval is not None:
+        config.update_setting("generation_interval", req.generation_interval)
+    if req.cache_limit is not None:
+        config.update_setting("cache_limit", req.cache_limit)
         
     return {"status": "success", "settings": config.get_settings()}
 

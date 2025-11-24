@@ -2,6 +2,7 @@ import json
 import base64
 import hashlib
 import requests
+import asyncio
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from Crypto.Cipher import AES
@@ -9,10 +10,14 @@ from Crypto.Util.Padding import pad, unpad
 from urllib.parse import quote
 from app.core.config import config
 
+import os
+import shutil
+
 class XFService:
     AES_KEY = b'G%.g7"Y&Nf^40Ee<'
     SIGN_URL = "https://peiyin.xunfei.cn/web-server/1.0/works_synth_sign"
     SYNTH_URL_BASE = "https://peiyin.xunfei.cn/synth"
+    CACHE_DIR = "cache"
     
     SPECIAL_SYMBOLS_MAP = {
         '#': '井号', '@': '艾特', '&': '和', '*': '星号', '%': '百分号',
@@ -27,6 +32,133 @@ class XFService:
     def __init__(self):
         import threading
         self._thread_local = threading.local()
+        self.queue = None
+        self.worker_task = None
+        
+        if not os.path.exists(self.CACHE_DIR):
+            os.makedirs(self.CACHE_DIR)
+
+    async def start_worker(self):
+        if self.queue is None:
+            self.queue = asyncio.Queue()
+            self.worker_task = asyncio.create_task(self._worker())
+
+    def _get_cache_key(self, text: str, voice_code: str, speed: int, volume: int, pitch: int, audio_type: str) -> str:
+        # MD5(text + voice + speed + volume + pitch + type)
+        raw = f"{text}_{voice_code}_{speed}_{volume}_{pitch}_{audio_type}"
+        return hashlib.md5(raw.encode('utf-8')).hexdigest() + ("." + audio_type.split('/')[-1] if '/' in audio_type else ".mp3")
+
+    def _clean_cache(self):
+        limit = config.get_settings().get("cache_limit", 100)
+        if limit <= 0:
+            return
+
+        files = [os.path.join(self.CACHE_DIR, f) for f in os.listdir(self.CACHE_DIR)]
+        files = [f for f in files if os.path.isfile(f)]
+        
+        if len(files) > limit:
+            # Sort by mtime (oldest first)
+            files.sort(key=os.path.getmtime)
+            # Delete oldest
+            for f in files[:len(files) - limit]:
+                try:
+                    os.remove(f)
+                except Exception as e:
+                    print(f"Error cleaning cache file {f}: {e}")
+
+    async def _worker(self):
+        while True:
+            future, args = await self.queue.get()
+            try:
+                # args: (text, voice_code, speed, volume, pitch, audio_type)
+                text, voice_code, speed, volume, pitch, audio_type = args
+                
+                url = self.get_audio_url(*args)
+                resp = self.get_audio_stream(url)
+                
+                # Save to cache if enabled
+                limit = config.get_settings().get("cache_limit", 100)
+                if limit > 0:
+                    cache_key = self._get_cache_key(*args)
+                    cache_path = os.path.join(self.CACHE_DIR, cache_key)
+                    
+                    # We need to read the content to save it, but resp is a stream.
+                    # We can stream to file and then re-open for the user?
+                    # Or just save chunks as we iterate? 
+                    # Endpoints expects an iterator.
+                    # Let's save to a temp file first, then move to cache, then serve from cache?
+                    # Or just read all into memory (might be large)?
+                    # Better: Stream to file, then serve file stream.
+                    
+                    with open(cache_path, 'wb') as f:
+                        for chunk in resp.iter_content(chunk_size=4096):
+                            if chunk:
+                                f.write(chunk)
+                    
+                    self._clean_cache()
+                    
+                    # Return a mock response that reads from the file
+                    class FileStreamResponse:
+                        def __init__(self, path):
+                            self.path = path
+                        def iter_content(self, chunk_size=4096):
+                            with open(self.path, 'rb') as f:
+                                while True:
+                                    data = f.read(chunk_size)
+                                    if not data:
+                                        break
+                                    yield data
+                                    
+                    if not future.done():
+                        future.set_result(FileStreamResponse(cache_path))
+                else:
+                    if not future.done():
+                        future.set_result(resp)
+                
+                # Wait for configured delay after successful generation
+                delay = config.get_settings().get("generation_interval", 1.0)
+                await asyncio.sleep(float(delay))
+                
+            except Exception as e:
+                if not future.done():
+                    future.set_exception(e)
+            finally:
+                self.queue.task_done()
+
+    async def process_tts_request(self, text: str, voice_code: str, speed: int, volume: int, pitch: int = 50, audio_type: str = "mp3"):
+        # Check cache first
+        limit = config.get_settings().get("cache_limit", 100)
+        if limit > 0:
+            cache_key = self._get_cache_key(text, voice_code, speed, volume, pitch, audio_type)
+            cache_path = os.path.join(self.CACHE_DIR, cache_key)
+            
+            if os.path.exists(cache_path):
+                # Update mtime
+                os.utime(cache_path, None)
+                
+                # Return mock response
+                class FileStreamResponse:
+                    def __init__(self, path):
+                        self.path = path
+                    def iter_content(self, chunk_size=4096):
+                        with open(self.path, 'rb') as f:
+                            while True:
+                                data = f.read(chunk_size)
+                                if not data:
+                                    break
+                                yield data
+                
+                # Return immediately, bypassing queue
+                return FileStreamResponse(cache_path)
+
+        if self.queue is None:
+            await self.start_worker()
+            
+        loop = asyncio.get_running_loop()
+        future = loop.create_future()
+        
+        await self.queue.put((future, (text, voice_code, speed, volume, pitch, audio_type)))
+        return await future
 
     def _get_session(self):
         if not hasattr(self._thread_local, "session"):
@@ -72,6 +204,22 @@ class XFService:
         decrypted_bytes = unpad(cipher.decrypt(encrypted_bytes), AES.block_size)
         return json.loads(decrypted_bytes.decode('utf-8'))
 
+    def _process_text_tags(self, text: str, pitch: int, emo: str, emo_value: int = 0) -> str:
+        # Pitch tag: [te50]
+        pitch_tag = f"[te{pitch}]" if pitch != 50 else "" # Assuming 50 is default/neutral? Plugin says: pitch ? '[te' + pitch + ']' : '';
+        # Actually plugin sends it if pitch is truthy. If pitch is 0? 
+        # Let's follow plugin: pitch = pitch ? '[te' + pitch + ']' : '';
+        # But we pass pitch as int. If pitch is 0, it sends nothing?
+        # Let's assume our pitch 50 is standard.
+        # Plugin logic: pitch = pitch ? ...
+        # If we pass pitch, we should add it.
+        pitch_tag = f"[te{pitch}]" if pitch is not None else ""
+        
+        # Emotion tag: [em{emo}:{emo_value}]
+        emo_tag = f"[em{emo}:{emo_value}]" if emo else ""
+        
+        return f"{pitch_tag}{emo_tag}{text}"
+
     def get_audio_url(self, text: str, voice_code: str, speed: int, volume: int, pitch: int = 50, audio_type: str = "mp3") -> str:
         processed_text = self._process_special_symbols(text)
         
@@ -95,8 +243,12 @@ class XFService:
             
         final_volume = int(int(volume) * 0.4 - 20)
         
+        # Add tags to text
+        # We default emo_value to 0 as we don't have a slider for it yet
+        tagged_text = self._process_text_tags(processed_text, pitch, emo, 0)
+        
         # Calculate hash
-        txt = processed_text
+        txt = tagged_text
         m = hashlib.md5()
         m.update(txt.encode('utf-8'))
         txt_hash = m.hexdigest()

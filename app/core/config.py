@@ -61,11 +61,13 @@ class Config:
                         "default_speaker": "聆小糖",
                         "default_speed": 100,
                         "default_volume": 100,
+                        "cache_limit": 100,
+                        "generation_interval": 1.0,
                         "default_audio_type": "audio/mp3",
                         "special_symbol_mapping": False
                     }
                     with open("settings.yaml", "w", encoding="utf-8") as f:
-                        yaml.dump(default_settings, f, allow_unicode=True)
+                        yaml.dump(default_settings, f, allow_unicode=True, sort_keys=False)
                     print("Created default settings.yaml")
             except Exception as e:
                 print(f"Error creating settings.yaml: {e}")
@@ -85,8 +87,34 @@ class Config:
 
     def update_setting(self, key: str, value: Any):
         self.settings[key] = value
+        
+        # Enforce order
+        ordered_keys = [
+            "port",
+            "auth_enabled",
+            "admin_password",
+            "default_speaker",
+            "default_speed",
+            "default_volume",
+            "cache_limit",
+            "generation_interval",
+            "default_audio_type",
+            "special_symbol_mapping"
+        ]
+        
+        ordered_settings = {}
+        # Add keys in order
+        for k in ordered_keys:
+            if k in self.settings:
+                ordered_settings[k] = self.settings[k]
+        
+        # Add any remaining keys
+        for k, v in self.settings.items():
+            if k not in ordered_keys:
+                ordered_settings[k] = v
+                
         with open("settings.yaml", "w", encoding="utf-8") as f:
-            yaml.dump(self.settings, f, allow_unicode=True)
+            yaml.dump(ordered_settings, f, allow_unicode=True, sort_keys=False)
 
     def reload_config(self):
         self.load_config()

@@ -11,4 +11,5 @@ venv/
 settings.yaml
 .idea/
 .vscode/
+cache/
 multitts/

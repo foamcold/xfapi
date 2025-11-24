@@ -47,11 +47,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             const spkRes = await fetch('/api/speakers');
             const speakers = await spkRes.json();
             const spkSelect = document.getElementById('default-speaker');
+            spkSelect.innerHTML = ''; // Clear existing options
+
+            // Deduplicate
+            const seen = new Set();
             speakers.forEach(s => {
-                const opt = document.createElement('option');
-                opt.value = s.name;
-                opt.textContent = s.name;
-                spkSelect.appendChild(opt);
+                if (!seen.has(s.name)) {
+                    seen.add(s.name);
+                    const opt = document.createElement('option');
+                    opt.value = s.name;
+                    opt.textContent = s.name;
+                    spkSelect.appendChild(opt);
+                }
             });
 
             // Load settings
@@ -66,6 +73,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 document.getElementById('default-speed').value = settings.default_speed || 100;
                 document.getElementById('default-volume').value = settings.default_volume || 100;
                 document.getElementById('default-audio-type').value = settings.default_audio_type || 'audio/mp3';
+                document.getElementById('generation-interval').value = settings.generation_interval !== undefined ? settings.generation_interval : 1.0;
+                document.getElementById('cache-limit').value = settings.cache_limit !== undefined ? settings.cache_limit : 100;
             }
         } catch (e) {
             console.error('Failed to load settings', e);
@@ -82,6 +91,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 default_speed: parseInt(document.getElementById('default-speed')?.value || 100),
                 default_volume: parseInt(document.getElementById('default-volume')?.value || 100),
                 default_audio_type: document.getElementById('default-audio-type')?.value || 'audio/mp3',
+                generation_interval: parseFloat(document.getElementById('generation-interval')?.value || 1.0),
+                cache_limit: parseInt(document.getElementById('cache-limit')?.value || 100),
                 key: authKey
             };
 

@@ -48,26 +48,44 @@
 
             <div class="settings-section">
                 <h3>默认参数</h3>
-                <div class="form-group">
-                    <label>默认发音人</label>
-                    <select id="default-speaker">
-                        <!-- Loaded dynamically -->
-                    </select>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>默认发音人</label>
+                        <select id="default-speaker">
+                            <!-- Loaded dynamically -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>默认音频类型</label>
+                        <select id="default-audio-type">
+                            <option value="audio/mp3">MP3</option>
+                            <option value="audio/wav">WAV</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>默认语速</label>
-                    <input type="number" id="default-speed" min="0" max="300">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>默认语速</label>
+                        <input type="number" id="default-speed" min="0" max="300">
+                    </div>
+                    <div class="form-group">
+                        <label>默认音量</label>
+                        <input type="number" id="default-volume" min="0" max="300">
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>默认音量</label>
-                    <input type="number" id="default-volume" min="0" max="300">
-                </div>
-                <div class="form-group">
-                    <label>默认音频类型</label>
-                    <select id="default-audio-type">
-                        <option value="audio/mp3">MP3</option>
-                        <option value="audio/wav">WAV</option>
-                    </select>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>生成间隔 (秒)</label>
+                        <input type="number" id="generation-interval" min="0" step="0.1" value="1.0">
+                        <small style="color: #aaa; margin-top: 0.5rem;">每次成功生成后的等待时间</small>
+                    </div>
+                    <div class="form-group">
+                        <label>缓存数量限制</label>
+                        <input type="number" id="cache-limit" min="0" step="1" value="100">
+                        <small style="color: #aaa; margin-top: 0.5rem;">保留最近生成的语音数量，0 为关闭缓存</small>
+                    </div>
                 </div>
             </div>
 
@@ -77,7 +95,6 @@
                     <label class="toggle-switch">
                         <input type="checkbox" id="special-symbol-mapping" class="toggle-input">
                         <span class="toggle-slider"></span>
-
                         启用特殊符号映射
                     </label>
                     <small style="color: #aaa; margin-top: 0.5rem;">将 #, @, & 等符号转换为中文读音</small>
