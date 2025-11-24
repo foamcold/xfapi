@@ -1,8 +1,12 @@
 # XFAPI - 讯飞配音逆向 API
 
+![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Docker](https://img.shields.io/badge/docker-supported-blue)
+
 XFAPI 是一个基于 FastAPI 构建的讯飞配音（peiyin.xunfei.cn）逆向 API 服务。它提供了一个简单的 HTTP 接口和 Web 管理界面，用于生成高质量的 TTS（语音合成）音频。
 
-## 功能特点
+## ✨ 功能特点
 
 - **API 代理**：封装讯飞配音网页版接口，支持多种发音人。
 - **Web 界面**：内置美观的 Web 界面，支持在线试听、参数调整（语速、音量等）。
@@ -11,7 +15,7 @@ XFAPI 是一个基于 FastAPI 构建的讯飞配音（peiyin.xunfei.cn）逆向 
 - **安全鉴权**：支持可选的登录鉴权功能，保护服务不被滥用。
 - **配置管理**：支持通过 Web 界面动态修改默认参数和发音人配置。
 
-## 安装与运行
+## 🚀 安装与运行
 
 ### 1. 环境准备
 
@@ -55,7 +59,7 @@ python main.py
 
 服务默认运行在 `http://0.0.0.0:8501`（可在 `settings.yaml` 中修改）。
 
-## Docker 部署
+## 🐳 Docker 部署
 
 ### 方式一：使用 Docker Compose（推荐）
 
@@ -83,7 +87,7 @@ python main.py
       xfapi
     ```
 
-## 使用说明
+## 📖 使用说明
 
 ### Web 界面
 
@@ -114,14 +118,30 @@ python main.py
 
 **GET 请求示例：**
 
-```
+```http
 http://localhost:8501/api/tts?text=你好世界&voice=聆小糖&speed=100
 ```
 
-**POST 请求示例：**
+**POST 请求示例 (cURL)：**
 
-```json
-POST /api/tts
+```bash
+curl -X POST "http://localhost:8501/api/tts" \
+     -H "Content-Type: application/json" \
+     -d '{
+           "text": "你好世界",
+           "voice": "565854553",
+           "speed": 100,
+           "volume": 100,
+           "audio_type": "audio/mp3",
+           "stream": true
+         }'
+```
+
+**POST 请求示例 (Raw HTTP)：**
+
+```http
+POST /api/tts HTTP/1.1
+Host: localhost:8501
 Content-Type: application/json
 
 {
@@ -135,7 +155,7 @@ Content-Type: application/json
 }
 ```
 
-## 扩展发音人 (MultiTTS 兼容)
+## 🔌 扩展发音人 (MultiTTS 兼容)
 
 本项目完全兼容 MultiTTS 的数据格式。如果您需要使用更多发音人：
 
@@ -143,7 +163,7 @@ Content-Type: application/json
 2.  将插件压缩包解压到项目multitts文件夹内，确保 `multitts` 文件夹位于根目录下（即 `xfapi/multitts/`）。
 3.  重启服务，系统会自动扫描并加载 `multitts` 目录下的所有发音人配置及头像资源。
 
-## 项目结构
+## 📂 项目结构
 
 ```
 xfapi/
@@ -155,17 +175,19 @@ xfapi/
 ├── config.yaml                 # 发音人列表配置
 ├── settings.yaml               # 系统设置 (自动生成/忽略)
 ├── multitts/                   # 包含发音人头像等资源 (可选)
-├── multitts/config.yaml        # 发音人扩展 (可选)
-├── multitts/xfpeiyin/avatar    # 发音人头像 (可选)
+│   ├── config.yaml             # 发音人扩展 (可选)
+│   └── xfpeiyin/avatar/        # 发音人头像 (可选)
 ├── main.py                     # 程序入口
-└── requirements.txt            # 项目依赖
+├── requirements.txt            # 项目依赖
+├── Dockerfile                  # Docker 构建文件
+└── docker-compose.yml          # Docker Compose 配置
 ```
 
-## 注意事项
+## ⚠️ 注意事项
 
 - 本项目仅供学习和研究使用，请勿用于商业用途。
 - 请遵守讯飞配音的使用条款。
 
-## 许可证
+## 📜 许可证
 
 MIT License
