@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             loginModal.classList.add('hidden');
             loadSpeakers();
         } else {
-            alert('密码错误');
+            await showAlert('密码错误');
         }
     });
 
@@ -232,13 +232,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     generateBtn.addEventListener('click', async () => {
         if (!selectedSpeaker) {
-            alert('请选择发音人');
+            await showAlert('请选择发音人');
             return;
         }
 
         const text = document.getElementById('tts-text').value;
         if (!text) {
-            alert('请输入文本');
+            await showAlert('请输入文本');
             return;
         }
 
@@ -293,7 +293,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             audioPlayer.play();
 
         } catch (e) {
-            alert('错误: ' + e.message);
+            await showAlert('错误: ' + e.message);
         } finally {
             generateBtn.disabled = false;
             generateBtn.textContent = '生成语音';
