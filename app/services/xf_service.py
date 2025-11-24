@@ -30,23 +30,20 @@ class XFService:
 
     def _get_session(self):
         if not hasattr(self._thread_local, "session"):
-            self._thread_local.session = self._create_session()
+            session = requests.Session()
+            retry = Retry(
+                total=3,
+                backoff_factor=1,
+                status_forcelist=[500, 502, 503, 504],
+                allowed_methods=["HEAD", "GET", "OPTIONS", "POST"]
+            )
+            adapter = HTTPAdapter(max_retries=retry)
+            session.mount("https://", adapter)
+            session.mount("http://", adapter)
+            self._thread_local.session = session
         return self._thread_local.session
 
-    def _create_session(self):
-        session = requests.Session()
-        retry = Retry(
-            total=3,
-            backoff_factor=0.5,
-            status_forcelist=[500, 502, 503, 504],
-            allowed_methods=["HEAD", "GET", "OPTIONS", "POST"]
-        )
-        adapter = HTTPAdapter(max_retries=retry)
-        session.mount("https://", adapter)
-        session.mount("http://", adapter)
-        return session
-
-    def _reset_session(self):
+    def _close_session(self):
         if hasattr(self._thread_local, "session"):
             try:
                 self._thread_local.session.close()
@@ -87,38 +84,19 @@ class XFService:
             if len(parts) > 1:
                 emo = parts[1]
 
-        # Parameter mapping logic from JS plugin
-        # speed: 0-300 -> mapped to -500 to 500 range in some implementations, but JS says: speed = speed * 4 - 200
-        # Wait, JS logic: speed = speed * 4 - 200. Input speed 0-100?
-        # User requirement: speed 0-300, default 100.
-        # Let's follow the JS logic exactly if possible, or adapt.
-        # JS: speed = speed * 4 - 200. If input is 100, result is 200.
-        # If input is 50, result is 0.
-        # The user said speed 0-300.
-        # Let's use the formula: speed_val = speed * 4 - 200.
-        # If user sends 100 (default), val = 200.
-        # If user sends 300, val = 1000.
-        # If user sends 0, val = -200.
-        
-        # Volume: JS says volume = Math.floor(volume * 0.4 - 20)
-        # User input 0-300. Default 100.
-        # If 100 -> 20.
-        
-        # Pitch: JS says pitch = pitch ? '[te' + pitch + ']' : ''
-        
-        # Emo and Sound Effect logic
-        # For now, we'll stick to basic params.
-        
-        # Construct text with tags
-        # pitch_tag = f"[te{pitch}]" if pitch != 50 else "" # Assuming 50 is default/neutral
-        # JS Plugin logic for pitch: pitch = pitch ? '[te' + pitch + ']' : '';
-        # We will omit pitch for now as it's not in the primary requirements list, but good to have.
+        # Parameter mapping logic
+        # speed: 0-100 -> -200 to 200 (Slope 4)
+        # 100-300 -> 200 to 500 (Slope 1.5)
+        sp = int(speed)
+        if sp <= 100:
+            final_speed = sp * 4 - 200
+        else:
+            final_speed = int(200 + (sp - 100) * 1.5)
+            
+        final_volume = int(int(volume) * 0.4 - 20)
         
         # Calculate hash
-        # txt = effectTag + pitch + emo + processed_text
-        # For simplicity, just processed_text for now unless we add more features.
         txt = processed_text
-        
         m = hashlib.md5()
         m.update(txt.encode('utf-8'))
         txt_hash = m.hexdigest()
@@ -135,12 +113,12 @@ class XFService:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             'Referer': 'https://peiyin.xunfei.cn/',
             'Origin': 'https://peiyin.xunfei.cn',
-            # 'Connection': 'close' # Removed to allow keep-alive with session
         }
         
-        # Manual retry loop with session reset
+        # Retry loop with backoff
         import time
-        max_retries = 3
+        import random
+        max_retries = 5
         
         for attempt in range(max_retries):
             session = self._get_session()
@@ -154,20 +132,6 @@ class XFService:
                      raise Exception(f"Unexpected response format: {resp_json}")
 
                 decrypted_body = self._decrypt(resp_json["body"])
-                # decrypted_body is a dict like {"time_stamp": "...", "sign_text": "..."}
-                
-                # Construct final URL
-                # Apply transforms
-                # Piecewise function for speed to support 0-300 range without hitting API limit (approx 500)
-                # 0-100 maps to -200 to 200 (Slope 4) - Preserves original behavior
-                # 100-300 maps to 200 to 500 (Slope 1.5) - Compresses high range to fit
-                sp = int(speed)
-                if sp <= 100:
-                    final_speed = sp * 4 - 200
-                else:
-                    final_speed = int(200 + (sp - 100) * 1.5)
-                    
-                final_volume = int(int(volume) * 0.4 - 20)
                 
                 txt_cnt = quote(txt)
                 
@@ -184,17 +148,18 @@ class XFService:
                 
                 return final_url
 
-            except (requests.exceptions.SSLError, requests.exceptions.ConnectionError) as e:
-                print(f"Attempt {attempt + 1} failed with SSL/Connection error: {e}")
-                # Reset session to clear broken connection
-                self._reset_session()
+            except Exception as e:
+                print(f"Attempt {attempt + 1} failed: {e}")
+                # Force close session to clear broken connection/SSL state
+                self._close_session()
                 
                 if attempt == max_retries - 1:
                     raise
-                time.sleep(1) # Wait 1 second before retrying
-            except Exception as e:
-                print(f"Error getting audio URL: {e}")
-                raise
+                
+                # Linear backoff with higher base: 2s, 4s, 6s, 8s, 10s... + jitter
+                sleep_time = ((attempt + 1) * 2) + random.uniform(0, 1)
+                print(f"Retrying in {sleep_time:.2f} seconds...")
+                time.sleep(sleep_time)
 
     def get_audio_stream(self, url: str):
         headers = {
@@ -202,8 +167,40 @@ class XFService:
             'Referer': 'https://peiyin.xunfei.cn/',
             'Connection': 'close'
         }
-        # Use a fresh session/request for streaming to avoid blocking the thread-local session pool
-        # and to ensure isolation for long-running downloads.
-        return requests.get(url, headers=headers, stream=True, timeout=30)
+        
+        import time
+        import random
+        max_retries = 5
+        
+        for attempt in range(max_retries):
+            try:
+                # Create a fresh session for each attempt to ensure no stale connections
+                session = requests.Session()
+                # We can still use HTTPAdapter for standard retries within the session, 
+                # but the outer loop handles the "nuclear option" of a fresh session.
+                retry = Retry(
+                    total=3,
+                    backoff_factor=1,
+                    status_forcelist=[500, 502, 503, 504],
+                    allowed_methods=["HEAD", "GET", "OPTIONS"]
+                )
+                adapter = HTTPAdapter(max_retries=retry)
+                session.mount("https://", adapter)
+                session.mount("http://", adapter)
+                
+                resp = session.get(url, headers=headers, stream=True, timeout=30)
+                resp.raise_for_status()
+                return resp
+                
+            except Exception as e:
+                print(f"Stream attempt {attempt + 1} failed: {e}")
+                
+                if attempt == max_retries - 1:
+                    raise
+                
+                # Linear backoff with higher base: 2s, 4s, 6s, 8s, 10s... + jitter
+                sleep_time = ((attempt + 1) * 2) + random.uniform(0, 1)
+                print(f"Retrying stream in {sleep_time:.2f} seconds...")
+                time.sleep(sleep_time)
 
 xf_service = XFService()

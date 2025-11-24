@@ -4,7 +4,22 @@ from fastapi.responses import FileResponse
 from app.api.endpoints import router
 import uvicorn
 
-app = FastAPI(title="XFAPI - iFLYTEK TTS Proxy")
+from app.core.config import config
+
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    settings = config.get_settings()
+    port = settings.get("port", 8501)
+    print("\n" + "="*50)
+    print("XFAPI 服务已启动")
+    print(f"Web 界面: http://localhost:{port}")
+    print(f"API 文档: http://localhost:{port}/docs")
+    print("="*50 + "\n")
+    yield
+
+app = FastAPI(title="XFAPI - iFLYTEK TTS Proxy", lifespan=lifespan)
 
 app.include_router(router, prefix="/api")
 
@@ -20,5 +35,15 @@ async def read_index():
 async def read_settings():
     return FileResponse("static/settings.html")
 
+
+
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    import copy
+    settings = config.get_settings()
+    port = settings.get("port", 8501)
+    
+    # Configure logging to decode URLs
+    log_config = copy.deepcopy(uvicorn.config.LOGGING_CONFIG)
+    log_config["formatters"]["access"]["()"] = "app.core.logging.DecodedAccessFormatter"
+    
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True, log_config=log_config)

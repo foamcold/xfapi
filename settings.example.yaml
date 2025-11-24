@@ -1,7 +1,8 @@
-admin_password: admin
+port: 8501
 auth_enabled: false
-default_audio_type: audio/mp3
+admin_password: admin
 default_speaker: 聆小糖
 default_speed: 100
 default_volume: 100
+default_audio_type: audio/mp3
 special_symbol_mapping: false

@@ -45,14 +45,37 @@ class Config:
             print(f"Error loading multitts/config.yaml: {e}")
 
         # Load settings.yaml
+        if not os.path.exists("settings.yaml"):
+            print("settings.yaml not found. Attempting to create from default...")
+            try:
+                if os.path.exists("settings.example.yaml"):
+                    import shutil
+                    shutil.copy("settings.example.yaml", "settings.yaml")
+                    print("Created settings.yaml from settings.example.yaml")
+                else:
+                    # Create default settings
+                    default_settings = {
+                        "port": 8501,
+                        "auth_enabled": False,
+                        "admin_password": "admin",
+                        "default_speaker": "聆小糖",
+                        "default_speed": 100,
+                        "default_volume": 100,
+                        "default_audio_type": "audio/mp3",
+                        "special_symbol_mapping": False
+                    }
+                    with open("settings.yaml", "w", encoding="utf-8") as f:
+                        yaml.dump(default_settings, f, allow_unicode=True)
+                    print("Created default settings.yaml")
+            except Exception as e:
+                print(f"Error creating settings.yaml: {e}")
+
         try:
             with open("settings.yaml", "r", encoding="utf-8") as f:
                 self.settings = yaml.safe_load(f) or {}
-        except FileNotFoundError:
-            print("Warning: settings.yaml not found. Using defaults.")
-            self.settings = {}
         except Exception as e:
             print(f"Error loading settings.yaml: {e}")
+            self.settings = {}
 
     def get_speakers(self) -> List[Dict[str, Any]]:
         return self.speakers
