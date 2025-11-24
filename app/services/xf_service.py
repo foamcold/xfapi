@@ -53,6 +53,11 @@ class XFService:
         if limit <= 0:
             return
 
+        # 确保cache目录存在
+        if not os.path.exists(self.CACHE_DIR):
+            os.makedirs(self.CACHE_DIR)
+            return
+
         files = [os.path.join(self.CACHE_DIR, f) for f in os.listdir(self.CACHE_DIR)]
         files = [f for f in files if os.path.isfile(f)]
         
@@ -79,6 +84,10 @@ class XFService:
                 # Save to cache if enabled
                 limit = config.get_settings().get("cache_limit", 100)
                 if limit > 0:
+                    # 确保cache目录存在
+                    if not os.path.exists(self.CACHE_DIR):
+                        os.makedirs(self.CACHE_DIR)
+                    
                     cache_key = self._get_cache_key(*args)
                     cache_path = os.path.join(self.CACHE_DIR, cache_key)
                     
@@ -129,6 +138,10 @@ class XFService:
         # Check cache first
         limit = config.get_settings().get("cache_limit", 100)
         if limit > 0:
+            # 确保cache目录存在
+            if not os.path.exists(self.CACHE_DIR):
+                os.makedirs(self.CACHE_DIR)
+            
             cache_key = self._get_cache_key(text, voice_code, speed, volume, pitch, audio_type)
             cache_path = os.path.join(self.CACHE_DIR, cache_key)
             

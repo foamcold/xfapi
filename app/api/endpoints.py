@@ -21,7 +21,7 @@ class TTSRequest(BaseModel):
 class SettingsUpdate(BaseModel):
     auth_enabled: Optional[bool] = None
     admin_password: Optional[str] = None
-    special_symbol_mapping: Optional[dict] = None
+    special_symbol_mapping: Optional[bool] = None
     default_speaker: Optional[str] = None
     default_speed: Optional[int] = None
     default_volume: Optional[int] = None
