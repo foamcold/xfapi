@@ -55,6 +55,34 @@ python main.py
 
 服务默认运行在 `http://0.0.0.0:8501`（可在 `settings.yaml` 中修改）。
 
+## Docker 部署
+
+### 方式一：使用 Docker Compose（推荐）
+
+1.  确保已安装 Docker 和 Docker Compose。
+2.  复制配置文件：
+    ```bash
+    cp settings.example.yaml settings.yaml
+    ```
+3.  启动服务：
+    ```bash
+    docker-compose up -d
+    ```
+
+### 方式二：手动构建运行
+
+1.  构建镜像：
+    ```bash
+    docker build -t xfapi .
+    ```
+2.  运行容器：
+    ```bash
+    docker run -d -p 8501:8501 --name xfapi \
+      -v $(pwd)/settings.yaml:/app/settings.yaml \
+      -v $(pwd)/multitts:/app/multitts \
+      xfapi
+    ```
+
 ## 使用说明
 
 ### Web 界面

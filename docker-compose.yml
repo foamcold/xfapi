@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  xfapi:
+    build: .
+    container_name: xfapi
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./settings.yaml:/app/settings.yaml
+      - ./multitts:/app/multitts
+    restart: unless-stopped
