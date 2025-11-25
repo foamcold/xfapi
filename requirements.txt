@@ -5,3 +5,4 @@ pycryptodome
 requests
 python-multipart
 colorama
+gunicorn
