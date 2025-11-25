@@ -76,6 +76,17 @@ python main.py
 ### 方式二：手动构建运行
 
 1.  构建镜像：
+    ```bash
+    docker build -t xfapi .
+    ```
+
+2.  运行容器：
+    ```bash
+    docker run -d -p 8501:8501 --name xfapi \
+      -v $(pwd)/data:/app/data \
+      xfapi
+    ```
+    *注意：Windows 用户请将 `$(pwd)` 替换为实际路径，例如 `%cd%` (cmd) 或 `${PWD}` (PowerShell)。*
 
 访问 `http://localhost:8501` 即可进入 Web 界面进行语音合成测试。
 访问 `http://localhost:8501/settings_page` 进入设置页面。
@@ -104,7 +115,7 @@ python main.py
 
 **GET 请求示例：**
 
-```http
+```text
 http://localhost:8501/api/tts?text=你好世界&voice=聆小糖&speed=100
 ```
 
