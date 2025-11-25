@@ -1,0 +1,10 @@
+port: 8501
+auth_enabled: false
+admin_password: admin
+default_speaker: 聆小糖
+default_speed: 100
+default_volume: 100
+cache_limit: 100
+generation_interval: 1.0
+default_audio_type: audio/mp3
+special_symbol_mapping: false
