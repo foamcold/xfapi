@@ -43,20 +43,45 @@ class ColoredFormatter(logging.Formatter):
 
         return formatter.format(record)
 
+import asyncio
+
+class LogQueue:
+    def __init__(self, maxlen=200):
+        self._history = deque(maxlen=maxlen)
+        self._subscribers = set()
+
+    def append(self, record):
+        self._history.append(record)
+        for queue in self._subscribers:
+            # 使用 put_nowait 是因为我们不希望日志记录器阻塞
+            # 如果队列满了，它会引发异常，但这在 asyncio.Queue 中很少见
+            queue.put_nowait(record)
+
+    def subscribe(self, queue: asyncio.Queue):
+        self._subscribers.add(queue)
+
+    def unsubscribe(self, queue: asyncio.Queue):
+        self._subscribers.discard(queue)
+
+    def __iter__(self):
+        return iter(self._history)
+
+    def __len__(self):
+        return len(self._history)
+
 # 用于存储日志记录的内存队列
-log_queue = deque(maxlen=200) # 只保留最新的200条日志
+log_queue = LogQueue(maxlen=200)
 
 class QueueHandler(logging.Handler):
     """
-    一个将日志记录放入队列的处理器。
+    一个将日志记录放入我们自定义 LogQueue 的处理器。
     """
-    def __init__(self, queue):
+    def __init__(self, log_queue_instance: LogQueue):
         super().__init__()
-        self.queue = queue
+        self.log_queue = log_queue_instance
 
     def emit(self, record):
-        # 我们只存储格式化后的消息字符串
-        self.queue.append(self.format(record))
+        self.log_queue.append(self.format(record))
 
 def setup_logger():
     """
@@ -79,13 +104,14 @@ def setup_logger():
 
     # 2. 内存队列处理器 (用于Web界面)
     # 我们需要一个不带颜色的格式化器给Web界面
-    web_formatter = logging.Formatter(
-        '{asctime} | {levelname:^9} | {message}',
-        datefmt='%Y-%m-%d %H:%M:%S',
-        style='{'
-    )
+    # web_formatter = logging.Formatter(
+    #     '{asctime} | {levelname:^9} | {message}',
+    #     datefmt='%Y-%m-%d %H:%M:%S',
+    #     style='{'
+    # )
     queue_handler = QueueHandler(log_queue)
-    queue_handler.setFormatter(web_formatter)
+    # 使用带颜色的格式化器，以便前端可以解析
+    queue_handler.setFormatter(ColoredFormatter())
     logger.addHandler(queue_handler)
     
     # 禁用 uvicorn 的默认访问日志，因为我们将使用自己的格式

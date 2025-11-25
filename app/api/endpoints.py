@@ -190,28 +190,33 @@ async def reload_config(req: dict):
 @router.get("/logs")
 async def stream_logs(request: Request):
     async def log_generator():
-        # 首先，发送所有历史日志
-        # 使用 list(log_queue) 来避免在迭代时队列发生变化
-        initial_logs = list(log_queue)
-        for log_record in initial_logs:
-            if await request.is_disconnected():
-                break
-            yield f"data: {json.dumps(log_record)}\n\n"
+        queue = asyncio.Queue()
+        # 将队列放入日志处理程序，以便新日志进入此特定队列
+        log_queue.subscribe(queue)
         
-        # 然后，使用索引来跟踪新日志，这比不断复制列表更高效
-        last_sent_index = len(initial_logs)
-        while True:
-            if await request.is_disconnected():
-                break
-            
-            current_len = len(log_queue)
-            if current_len > last_sent_index:
-                # 切片操作会创建一个新列表，这是安全的
-                new_logs = list(log_queue)[last_sent_index:]
-                for log_record in new_logs:
+        try:
+            # 首先，发送所有历史日志
+            initial_logs = list(log_queue)
+            for log_record in initial_logs:
+                yield f"data: {json.dumps(log_record)}\n\n"
+
+            # 然后，监听新日志
+            while True:
+                try:
+                    # 等待新日志，设置超时以定期检查连接状态
+                    log_record = await asyncio.wait_for(queue.get(), timeout=1.0)
                     yield f"data: {json.dumps(log_record)}\n\n"
-                last_sent_index = current_len
-            
-            await asyncio.sleep(0.5) # 每 0.5 秒检查一次新日志
+                    queue.task_done()
+                except asyncio.TimeoutError:
+                    # 超时后，检查客户端是否已断开连接
+                    if await request.is_disconnected():
+                        break
+        except asyncio.CancelledError:
+            # 当服务器关闭时，Uvicorn 会取消任务，捕获此异常
+            logger.debug("日志流任务被取消。")
+        finally:
+            # 确保我们取消订阅队列以避免内存泄漏
+            log_queue.unsubscribe(queue)
+            logger.debug("日志流客户端已断开连接并已取消订阅。")
 
     return StreamingResponse(log_generator(), media_type="text/event-stream")

@@ -29,8 +29,14 @@ async def lifespan(app: FastAPI):
         logger.info(f"API 文档: http://localhost:{port}/docs")
         logger.info("="*50)
         
-    asyncio.create_task(print_banner())
-    yield
+    banner_task = asyncio.create_task(print_banner())
+    
+    try:
+        yield
+    finally:
+        # 应用关闭时，取消后台任务
+        banner_task.cancel()
+        logger.info("XFAPI 服务已关闭")
 
 app = FastAPI(title="XFAPI - iFLYTEK TTS Proxy", lifespan=lifespan)
 

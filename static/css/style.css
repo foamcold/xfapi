@@ -130,17 +130,21 @@ select:hover {
     background-color: rgba(162, 155, 254, 0.05);
 }
 
-/* 下拉框焦点状态：向上箭头 + 增强边框 */
+/* 下拉框焦点状态 */
 select:focus {
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236c5ce7' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 15 12 9 18 15'%3e%3c/polyline%3e%3c/svg%3e");
     background-color: rgba(108, 92, 231, 0.08);
     border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.1);
 }
 
+/* 下拉框打开状态：向上箭头 */
+select.open {
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236c5ce7' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 15 12 9 18 15'%3e%3c/polyline%3e%3c/svg%3e");
+}
+
 /* 下拉选项样式优化 */
 select option {
-    background-color: var(--input-bg);
+    background-color: var(--bg-color);
     color: var(--text-color);
     padding: 0.8rem;
     border-radius: 4px;
