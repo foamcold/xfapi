@@ -76,9 +76,12 @@ async def generate_tts_get(
     return await _process_tts(req)
 
 async def _process_tts(req: TTSRequest):
+    import time
+    api_start = time.time()
+    
     settings = config.get_settings()
     
-    voice = req.voice or settings.get("default_speaker", "聆小糖")
+    voice = req.voice or settings.get("default_speaker", "聪小糖")
     speed = req.speed if req.speed is not None else settings.get("default_speed", 100)
     volume = req.volume if req.volume is not None else settings.get("default_volume", 100)
     audio_type = req.audio_type or settings.get("default_audio_type", "audio/mp3")
@@ -105,7 +108,16 @@ async def _process_tts(req: TTSRequest):
     
     try:
         # 使用队列处理方法
+        logger.debug(f"[API] 开始请求TTS服务")
+        tts_call_start = time.time()
+        
         resp = await xf_service.process_tts_request(req.text, voice, speed, volume, audio_type=audio_type)
+        
+        tts_call_time = (time.time() - tts_call_start) * 1000
+        logger.debug(f"[API] TTS服务返回: {tts_call_time:.0f}ms")
+        
+        api_total = (time.time() - api_start) * 1000
+        logger.debug(f"[API] 请求处理总耗时: {api_total:.0f}ms")
         
         if req.stream:
             return StreamingResponse(resp.iter_content(chunk_size=4096), media_type=audio_type)

@@ -74,13 +74,32 @@ class XFService:
 
     async def _worker(self):
         while True:
+            # 记录从队列中获取任务的时间
+            queue_wait_start = time.time()
             future, args = await self.queue.get()
+            queue_wait_time = (time.time() - queue_wait_start) * 1000
+            
+            if queue_wait_time > 100:  # 超过100ms才记录
+                logger.info(f"[TTS] 队列等待: {queue_wait_time:.0f}ms")
+            
             try:
+                # 记录整个TTS生成的开始时间
+                tts_start = time.time()
+                
                 # 参数: (text, voice_code, speed, volume, pitch, audio_type)
                 text, voice_code, speed, volume, pitch, audio_type = args
                 
+                # 步骤1: 获取签名URL
+                step1_start = time.time()
                 url = self.get_audio_url(*args)
+                step1_time = (time.time() - step1_start) * 1000
+                logger.info(f"[TTS] 步骤1-签名请求: {step1_time:.0f}ms")
+                
+                # 步骤2: 下载音频流
+                step2_start = time.time()
                 resp = self.get_audio_stream(url)
+                step2_time = (time.time() - step2_start) * 1000
+                logger.info(f"[TTS] 步骤2-音频下载: {step2_time:.0f}ms")
                 
                 # 如果启用了缓存，则保存到缓存
                 limit = config.get_settings().get("cache_limit", 100)
@@ -117,11 +136,26 @@ class XFService:
                     if not future.done():
                         future.set_result(resp)
                 
+                # 记录总耗时
+                total_time = (time.time() - tts_start) * 1000
+                if total_time > 10000:  # 超过10秒标记为WARNING
+                    logger.warning(f"[TTS] 总耗时: {total_time:.0f}ms (步骤1: {step1_time:.0f}ms + 步骤2: {step2_time:.0f}ms)")
+                else:
+                    logger.info(f"[TTS] 总耗时: {total_time:.0f}ms")
+                
+                logger.debug(f"[TTS] 准备sleep({config.get_settings().get('generation_interval', 1.0)}s)")
+                sleep_start = time.time()
+                
                 # 成功生成后等待配置的延迟
                 delay = config.get_settings().get("generation_interval", 1.0)
                 await asyncio.sleep(float(delay))
                 
+                sleep_time = (time.time() - sleep_start) * 1000
+                logger.debug(f"[TTS] sleep完成: {sleep_time:.0f}ms")
+                logger.debug(f"[TTS] worker准备好处理下一个请求")
+                
             except Exception as e:
+                logger.error(f"[TTS] 生成失败: {e}")
                 if not future.done():
                     future.set_exception(e)
             finally:
@@ -257,6 +291,9 @@ class XFService:
         for attempt in range(max_retries):
             client = self._get_disguise_client()
             try:
+                # 记录签名请求开始时间
+                sign_start = time.time()
+                
                 # 使用伪装客户端发送POST请求,使用 json 参数而不是 data
                 resp = client.post(
                     self.SIGN_URL, 
@@ -265,6 +302,13 @@ class XFService:
                     add_delay=True if attempt > 0 else False
                 )
                 resp.raise_for_status()
+                
+                # 记录签名请求耗时
+                sign_elapsed = (time.time() - sign_start) * 1000
+                if sign_elapsed > 5000:  # 如果超过5秒,记录警告
+                    logger.warning(f"  └─ 签名请求耗时较长: {sign_elapsed:.0f}ms, 尝试: {attempt + 1}")
+                elif sign_elapsed > 2000:  # 超过2秒记录INFO
+                    logger.info(f"  └─ 签名请求: {sign_elapsed:.0f}ms, 尝试: {attempt + 1}")
                 
                 resp_json = resp.json()
                 
@@ -289,7 +333,7 @@ class XFService:
                 return final_url
 
             except Exception as e:
-                logger.warning(f"签名URL请求尝试 {attempt + 1} 次失败: {e}")
+                logger.warning(f"签名URL请求尝试 {attempt + 1}/{max_retries} 次失败: {e}")
                 # 强制关闭客户端以清除损坏的连接/SSL 状态
                 self._close_client()
                 
@@ -315,6 +359,9 @@ class XFService:
         
         for attempt in range(max_retries):
             try:
+                # 记录音频流请求开始时间
+                stream_start = time.time()
+                
                 # 为每次尝试创建一个新的伪装客户端
                 client = DisguiseClient(browser="chrome")
                 
@@ -326,10 +373,18 @@ class XFService:
                     add_delay=True if attempt > 0 else False
                 )
                 resp.raise_for_status()
+                
+                # 记录音频流请求耗时
+                stream_elapsed = (time.time() - stream_start) * 1000
+                if stream_elapsed > 5000:  # 如果超过5秒,记录警告
+                    logger.warning(f"  └─ 音频流耗时较长: {stream_elapsed:.0f}ms, 尝试: {attempt + 1}")
+                elif stream_elapsed > 2000:  # 超过2秒记录INFO
+                    logger.info(f"  └─ 音频流: {stream_elapsed:.0f}ms, 尝试: {attempt + 1}")
+                
                 return resp
                 
             except Exception as e:
-                logger.warning(f"音频流请求尝试 {attempt + 1} 次失败: {e}")
+                logger.warning(f"音频流请求尝试 {attempt + 1}/{max_retries} 次失败: {e}")
                 
                 if attempt == max_retries - 1:
                     logger.error("音频流请求在多次重试后失败。")

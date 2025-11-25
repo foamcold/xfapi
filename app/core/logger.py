@@ -70,7 +70,7 @@ def setup_logger():
     if logger.hasHandlers():
         logger.handlers.clear()
 
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
 
     # 1. 控制台处理器 (带颜色)
     console_handler = logging.StreamHandler(sys.stdout)
