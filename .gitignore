@@ -1,5 +1,6 @@
 # 数据目录
 data/*
+!data/config.yaml
 !data/settings.example.yaml
 
 # Python 相关

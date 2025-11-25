@@ -1,0 +1,16 @@
+xfpeiyin:
+- !!org.nobody.multitts.tts.speaker.Speaker
+  avatar: lingxiaotang.png
+  code: lingxiaotang
+  desc: 温柔甜美、语音助手
+  extendUI: null
+  gender: 0
+  locale: zh-CN
+  name: 聆小糖
+  note: null
+  param: '565854553'
+  pitch: 1.0
+  sampleRate: 24000
+  speed: 1.01
+  type: 1
+  volume: 1.0
