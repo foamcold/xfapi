@@ -1,5 +1,6 @@
 import yaml
 import os
+import time
 from typing import List, Dict, Any
 from app.core.logger import logger, set_log_level
 
@@ -13,6 +14,8 @@ class Config:
             # cls._instance.load_config()
             cls._instance.speakers = []
             cls._instance.settings = {}
+            cls._instance._settings_mtime = 0
+            cls._instance._last_check_time = 0
         return cls._instance
 
     def load_config(self):
@@ -85,9 +88,17 @@ class Config:
             except Exception as e:
                 logger.error(f"创建 settings.yaml 时出错: {e}")
 
+        self._load_settings_from_file()
+
+    def _load_settings_from_file(self):
         try:
-            with open("data/settings.yaml", "r", encoding="utf-8") as f:
-                self.settings = yaml.safe_load(f) or {}
+            settings_path = "data/settings.yaml"
+            if os.path.exists(settings_path):
+                with open(settings_path, "r", encoding="utf-8") as f:
+                    self.settings = yaml.safe_load(f) or {}
+                self._settings_mtime = os.path.getmtime(settings_path)
+            else:
+                self.settings = {}
         except Exception as e:
             logger.error(f"加载 settings.yaml 时出错: {e}")
             self.settings = {}
@@ -99,6 +110,20 @@ class Config:
         return self.speakers
 
     def get_settings(self) -> Dict[str, Any]:
+        # 检查配置文件是否更新 (每5秒检查一次)
+        now = time.time()
+        if now - self._last_check_time > 5:
+            self._last_check_time = now
+            settings_path = "data/settings.yaml"
+            if os.path.exists(settings_path):
+                try:
+                    mtime = os.path.getmtime(settings_path)
+                    if mtime > self._settings_mtime:
+                        logger.info("检测到配置文件变更，正在重新加载...")
+                        self._load_settings_from_file()
+                except Exception as e:
+                    logger.error(f"检查配置文件更新时出错: {e}")
+        
         return self.settings
 
     def update_setting(self, key: str, value: Any):
