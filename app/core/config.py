@@ -1,7 +1,7 @@
 import yaml
 import os
 from typing import List, Dict, Any
-from app.core.logger import logger
+from app.core.logger import logger, set_log_level
 
 class Config:
     _instance = None
@@ -75,7 +75,9 @@ class Config:
                         "cache_limit": 100,
                         "generation_interval": 1.0,
                         "default_audio_type": "audio/mp3",
-                        "special_symbol_mapping": False
+                        "default_audio_type": "audio/mp3",
+                        "special_symbol_mapping": False,
+                        "log_level": "INFO"
                     }
                     with open("data/settings.yaml", "w", encoding="utf-8") as f:
                         yaml.dump(default_settings, f, allow_unicode=True, sort_keys=False)
@@ -89,6 +91,9 @@ class Config:
         except Exception as e:
             logger.error(f"加载 settings.yaml 时出错: {e}")
             self.settings = {}
+            
+        # 设置日志级别
+        set_log_level(self.settings.get("log_level", "INFO"))
 
     def get_speakers(self) -> List[Dict[str, Any]]:
         return self.speakers
@@ -99,9 +104,14 @@ class Config:
     def update_setting(self, key: str, value: Any):
         self.settings[key] = value
         
+        # 如果更新了日志级别，立即生效
+        if key == "log_level":
+            set_log_level(value)
+        
         # 强制排序
         ordered_keys = [
             "port",
+            "log_level",
             "auth_enabled",
             "admin_password",
             "default_speaker",

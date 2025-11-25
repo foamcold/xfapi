@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const logContainer = document.getElementById('log-container');
     const autoRefreshCheckbox = document.getElementById('auto-refresh');
     const levelFilter = document.getElementById('level-filter');
@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderLogs() {
         const level = levelFilter.value;
         const keyword = keywordSearch.value.toLowerCase();
-        
+
         // 如果启用了自动刷新，则显示所有日志
         if (autoRefreshCheckbox.checked) {
             logContainer.innerHTML = ''; // 清空
@@ -35,9 +35,11 @@ document.addEventListener('DOMContentLoaded', function() {
     function addLogLineToDOM(message) {
         const line = document.createElement('div');
         line.className = 'log-line';
-        
+
         const lowerMessage = message.toLowerCase();
-        if (lowerMessage.includes('info')) {
+        if (lowerMessage.includes('debug')) {
+            line.classList.add('debug');
+        } else if (lowerMessage.includes('info')) {
             line.classList.add('info');
         } else if (lowerMessage.includes('warning')) {
             line.classList.add('warning');
@@ -73,16 +75,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const eventSource = new EventSource('/api/logs');
 
-    eventSource.onopen = function() {
+    eventSource.onopen = function () {
         addNewLog('日志流连接成功。');
     };
 
-    eventSource.onmessage = function(event) {
+    eventSource.onmessage = function (event) {
         const logData = JSON.parse(event.data);
         addNewLog(logData);
     };
 
-    eventSource.onerror = function(err) {
+    eventSource.onerror = function (err) {
         addNewLog('日志流连接错误，请检查服务器状态并刷新页面。');
         console.error('EventSource failed:', err);
         eventSource.close();

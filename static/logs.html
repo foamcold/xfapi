@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,13 +18,32 @@
             overflow-x: auto;
             white-space: pre;
         }
+
         .log-line {
             line-height: 1.6;
         }
-        .log-line.info { color: #23d18b; }
-        .log-line.warning { color: #f5a623; }
-        .log-line.error { color: #f44336; }
-        .log-line.critical { color: #f44336; font-weight: bold; }
+
+        .log-line.debug {
+            color: #888;
+        }
+
+        .log-line.info {
+            color: #23d18b;
+        }
+
+        .log-line.warning {
+            color: #f5a623;
+        }
+
+        .log-line.error {
+            color: #f44336;
+        }
+
+        .log-line.critical {
+            color: #f44336;
+            font-weight: bold;
+        }
+
         #toolbar {
             margin-bottom: 15px;
             display: flex;
@@ -32,6 +52,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <header>
@@ -43,7 +64,8 @@
             </nav>
         </header>
         <main>
-            <div id="toolbar" style="display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; background: rgba(0, 0, 0, 0.2); padding: 1rem; border-radius: 10px; margin-bottom: 1rem;">
+            <div id="toolbar"
+                style="display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; background: rgba(0, 0, 0, 0.2); padding: 1rem; border-radius: 10px; margin-bottom: 1rem;">
                 <label class="toggle-switch" style="margin-bottom: 0;">
                     <input type="checkbox" id="auto-refresh" class="toggle-input" checked>
                     <span class="toggle-slider"></span>
@@ -51,11 +73,11 @@
                 </label>
                 <div style="display: flex; gap: 1rem; flex: 1; align-items: center;">
                     <select id="level-filter" style="min-width: 120px;">
-                        <option value="">所有级别</option>
+                        <option value="">全部</option>
                         <option value="INFO">INFO</option>
+                        <option value="DEBUG">DEBUG</option>
                         <option value="WARNING">WARNING</option>
                         <option value="ERROR">ERROR</option>
-                        <option value="CRITICAL">CRITICAL</option>
                     </select>
                     <input type="text" id="keyword-search" placeholder="关键字搜索..." style="flex: 1;">
                 </div>
@@ -67,4 +89,5 @@
     </div>
     <script src="/static/js/logs.js"></script>
 </body>
+
 </html>

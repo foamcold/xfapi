@@ -78,27 +78,33 @@
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>生成间隔 (秒)</label>
-                        <input type="number" id="generation-interval" min="0" step="0.1" value="1.0">
-                        <small style="color: #aaa; margin-top: 0.5rem;">每次成功生成后的等待时间</small>
-                    </div>
-                    <div class="form-group">
                         <label>缓存数量限制</label>
                         <input type="number" id="cache-limit" min="0" step="1" value="100">
-                        <small style="color: #aaa; margin-top: 0.5rem;">保留最近生成的语音数量，0 为关闭缓存</small>
+                        <small style="color: #aaa; margin-top: 0.5rem;">保留最近生成的语音数量，设置为 0 则关闭缓存</small>
                     </div>
                 </div>
             </div>
 
             <div class="settings-section">
                 <h3>功能设置</h3>
-                <div class="form-group">
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="special-symbol-mapping" class="toggle-input">
-                        <span class="toggle-slider"></span>
-                        启用特殊符号映射
-                    </label>
-                    <small style="color: #aaa; margin-top: 0.5rem;">将 #, @, & 等符号转换为中文读音</small>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="special-symbol-mapping" class="toggle-input">
+                            <span class="toggle-slider"></span>
+                            启用特殊符号映射
+                        </label>
+                        <small style="color: #aaa; margin-top: 0.5rem;">将特殊符号转换为中文读音</small>
+                    </div>
+                    <div class="form-group">
+                        <label>日志级别</label>
+                        <select id="log-level">
+                            <option value="INFO">INFO</option>
+                            <option value="DEBUG">DEBUG</option>
+                            <option value="WARNING">WARNING</option>
+                            <option value="ERROR">ERROR</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 

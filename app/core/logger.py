@@ -97,3 +97,17 @@ def setup_logger():
 # 在模块加载时就获取一个 logger 实例，以便其他模块可以直接导入使用
 # setup_logger() 将在 main.py 中被显式调用
 logger = logging.getLogger("XFAPI")
+
+def set_log_level(level_name: str):
+    """
+    设置日志级别
+    
+    Args:
+        level_name: 日志级别名称 (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    """
+    level = getattr(logging, level_name.upper(), logging.INFO)
+    logger.setLevel(level)
+    # 同时更新 handler 的级别，确保一致性
+    for handler in logger.handlers:
+        handler.setLevel(level)
+

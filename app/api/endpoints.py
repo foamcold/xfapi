@@ -28,8 +28,8 @@ class SettingsUpdate(BaseModel):
     default_speed: Optional[int] = None
     default_volume: Optional[int] = None
     default_audio_type: Optional[str] = None
-    generation_interval: Optional[float] = None
     cache_limit: Optional[int] = None
+    log_level: Optional[str] = None
     key: Optional[str] = None
 
 def verify_key(key: Optional[str] = None):
@@ -161,10 +161,10 @@ async def update_settings(req: SettingsUpdate):
         config.update_setting("default_volume", req.default_volume)
     if req.default_audio_type is not None:
         config.update_setting("default_audio_type", req.default_audio_type)
-    if req.generation_interval is not None:
-        config.update_setting("generation_interval", req.generation_interval)
     if req.cache_limit is not None:
         config.update_setting("cache_limit", req.cache_limit)
+    if req.log_level is not None:
+        config.update_setting("log_level", req.log_level)
         
     return {"status": "success", "settings": config.get_settings()}
 

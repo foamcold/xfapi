@@ -120,11 +120,38 @@ select {
     background-position: right 1rem center;
     background-size: 1em;
     padding-right: 2.5rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* 下拉框悬停效果 */
+select:hover {
+    border-color: var(--secondary-color);
+    background-color: rgba(162, 155, 254, 0.05);
+}
+
+/* 下拉框焦点状态：向上箭头 + 增强边框 */
+select:focus {
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236c5ce7' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 15 12 9 18 15'%3e%3c/polyline%3e%3c/svg%3e");
+    background-color: rgba(108, 92, 231, 0.08);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.1);
+}
+
+/* 下拉选项样式优化 */
 select option {
-    background-color: var(--bg-color);
+    background-color: var(--input-bg);
     color: var(--text-color);
+    padding: 0.8rem;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+/* 下拉选项悬停效果 */
+select option:hover,
+select option:checked {
+    background-color: rgba(108, 92, 231, 0.2);
+    color: var(--primary-color);
 }
 
 input:focus,
@@ -234,6 +261,7 @@ button:active {
 /* Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
+    height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -247,6 +275,11 @@ button:active {
 
 ::-webkit-scrollbar-thumb:hover {
     background: var(--secondary-color);
+}
+
+/* 修复滚动条交汇处的白色小方块 */
+::-webkit-scrollbar-corner {
+    background: rgba(0, 0, 0, 0.1);
 }
 
 /* Range Slider */
