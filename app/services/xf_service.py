@@ -1,15 +1,15 @@
 import json
 import base64
 import hashlib
-import requests
 import asyncio
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+import time
+import random
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from urllib.parse import quote
 from app.core.config import config
 from app.core.logger import logger
+from app.core.disguise import DisguiseClient
 
 import os
 import shutil
@@ -92,14 +92,6 @@ class XFService:
                     cache_key = self._get_cache_key(*args)
                     cache_path = os.path.join(self.CACHE_DIR, cache_key)
                     
-                    # 我们需要读取内容以保存它，但 resp 是一个流。
-                    # 我们可以将流式传输到文件，然后为用户重新打开吗？
-                    # 或者只是在迭代时保存块？
-                    # 端点需要一个迭代器。
-                    # 让我们先保存到临时文件，然后移动到缓存，然后从缓存提供服务？
-                    # 或者只是将所有内容读入内存（可能会很大）？
-                    # 更好的办法是：流式传输到文件，然后提供文件流。
-                    
                     with open(cache_path, 'wb') as f:
                         for chunk in resp.iter_content(chunk_size=4096):
                             if chunk:
@@ -174,28 +166,20 @@ class XFService:
         await self.queue.put((future, (text, voice_code, speed, volume, pitch, audio_type)))
         return await future
 
-    def _get_session(self):
-        if not hasattr(self._thread_local, "session"):
-            session = requests.Session()
-            retry = Retry(
-                total=3,
-                backoff_factor=1,
-                status_forcelist=[500, 502, 503, 504],
-                allowed_methods=["HEAD", "GET", "OPTIONS", "POST"]
-            )
-            adapter = HTTPAdapter(max_retries=retry)
-            session.mount("https://", adapter)
-            session.mount("http://", adapter)
-            self._thread_local.session = session
-        return self._thread_local.session
+    def _get_disguise_client(self):
+        """获取线程本地的伪装客户端"""
+        if not hasattr(self._thread_local, "disguise_client"):
+            self._thread_local.disguise_client = DisguiseClient(browser="chrome")
+        return self._thread_local.disguise_client
 
-    def _close_session(self):
-        if hasattr(self._thread_local, "session"):
+    def _close_client(self):
+        """关闭伪装客户端"""
+        if hasattr(self._thread_local, "disguise_client"):
             try:
-                self._thread_local.session.close()
+                self._thread_local.disguise_client.clear_cookies()
             except:
                 pass
-            del self._thread_local.session
+            del self._thread_local.disguise_client
 
     def _process_special_symbols(self, text: str) -> str:
         if not config.get_settings().get("special_symbol_mapping", False):
@@ -220,13 +204,6 @@ class XFService:
 
     def _process_text_tags(self, text: str, pitch: int, emo: str, emo_value: int = 0) -> str:
         # 音高标签: [te50]
-        pitch_tag = f"[te{pitch}]" if pitch != 50 else "" # 假设 50 是默认/中性？插件提示：pitch ? '[te' + pitch + ']' : '';
-        # 实际上，如果 pitch 为真，插件会发送它。如果 pitch 为 0 呢？
-        # 让我们遵循插件的逻辑：pitch = pitch ? '[te' + pitch + ']' : '';
-        # 但是我们传递的 pitch 是整数。如果 pitch 为 0，它会什么都不发送吗？
-        # 让我们假设我们的音高 50 是标准的。
-        # 插件逻辑：pitch = pitch ? ...
-        # 如果我们传递了 pitch，我们应该添加它。
         pitch_tag = f"[te{pitch}]" if pitch is not None else ""
         
         # 情绪标签: [em{emo}:{emo_value}]
@@ -258,7 +235,6 @@ class XFService:
         final_volume = int(int(volume) * 0.4 - 20)
         
         # 将标签添加到文本中
-        # 我们将 emo_value 默认设置为 0，因为我们还没有它的滑块
         tagged_text = self._process_text_tags(processed_text, pitch, emo, 0)
         
         # 计算哈希值
@@ -272,24 +248,22 @@ class XFService:
         }
         
         encrypted_req = self._encrypt(req_data)
-        final_req = json.dumps({"req": encrypted_req})
-        
-        headers = {
-            'content-type': 'application/json;charset=UTF-8',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Referer': 'https://peiyin.xunfei.cn/',
-            'Origin': 'https://peiyin.xunfei.cn',
-        }
+        # 直接使用字典对象,让 curl_cffi 自动处理 JSON 序列化
+        final_req = {"req": encrypted_req}
         
         # 带退避算法的重试循环
-        import time
-        import random
         max_retries = 5
         
         for attempt in range(max_retries):
-            session = self._get_session()
+            client = self._get_disguise_client()
             try:
-                resp = session.post(self.SIGN_URL, data=final_req, headers=headers, timeout=10)
+                # 使用伪装客户端发送POST请求,使用 json 参数而不是 data
+                resp = client.post(
+                    self.SIGN_URL, 
+                    json=final_req,
+                    request_type="api",
+                    add_delay=True if attempt > 0 else False
+                )
                 resp.raise_for_status()
                 
                 resp_json = resp.json()
@@ -316,46 +290,41 @@ class XFService:
 
             except Exception as e:
                 logger.warning(f"签名URL请求尝试 {attempt + 1} 次失败: {e}")
-                # 强制关闭会话以清除损坏的连接/SSL 状态
-                self._close_session()
+                # 强制关闭客户端以清除损坏的连接/SSL 状态
+                self._close_client()
                 
                 if attempt == max_retries - 1:
                     logger.error("签名URL请求在多次重试后失败。")
                     raise
                 
-                # 线性退避，基数更高：2s, 4s, 6s, 8s, 10s... + 抖动
+                # 线性退避,基数更高:2s, 4s, 6s, 8s, 10s... + 抖动
                 sleep_time = ((attempt + 1) * 2) + random.uniform(0, 1)
                 logger.info(f"将在 {sleep_time:.2f} 秒后重试...")
                 time.sleep(sleep_time)
 
     def get_audio_stream(self, url: str):
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Referer': 'https://peiyin.xunfei.cn/',
-            'Connection': 'close'
-        }
+        """获取音频流
         
-        import time
-        import random
+        Args:
+            url: 音频URL
+            
+        Returns:
+            响应对象(支持流式传输)
+        """
         max_retries = 5
         
         for attempt in range(max_retries):
             try:
-                # 为每次尝试创建一个新的会话，以确保没有过时的连接
-                session = requests.Session()
-                # 我们仍然可以在会话中使用 HTTPAdapter 进行标准重试，
-                # 但外层循环处理“核选项”，即创建一个新的会话。
-                retry = Retry(
-                    total=3,
-                    backoff_factor=1,
-                    status_forcelist=[500, 502, 503, 504],
-                    allowed_methods=["HEAD", "GET", "OPTIONS"]
-                )
-                adapter = HTTPAdapter(max_retries=retry)
-                session.mount("https://", adapter)
-                session.mount("http://", adapter)
+                # 为每次尝试创建一个新的伪装客户端
+                client = DisguiseClient(browser="chrome")
                 
-                resp = session.get(url, headers=headers, stream=True, timeout=30)
+                # 使用伪装客户端发送GET请求(流式传输)
+                resp = client.get(
+                    url, 
+                    request_type="resource",
+                    stream=True,
+                    add_delay=True if attempt > 0 else False
+                )
                 resp.raise_for_status()
                 return resp
                 
@@ -366,7 +335,7 @@ class XFService:
                     logger.error("音频流请求在多次重试后失败。")
                     raise
                 
-                # 线性退避，基数更高：2s, 4s, 6s, 8s, 10s... + 抖动
+                # 线性退避,基数更高:2s, 4s, 6s, 8s, 10s... + 抖动
                 sleep_time = ((attempt + 1) * 2) + random.uniform(0, 1)
                 logger.info(f"将在 {sleep_time:.2f} 秒后重试音频流...")
                 time.sleep(sleep_time)

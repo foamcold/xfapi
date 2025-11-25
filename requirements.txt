@@ -2,7 +2,8 @@ fastapi
 uvicorn
 pyyaml
 pycryptodome
-requests
+curl_cffi>=0.5.10
+fake-useragent>=1.4.0
 python-multipart
 colorama
 gunicorn
