@@ -6,6 +6,9 @@ WORKDIR /app
 ENV TZ=Asia/Shanghai
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
+# 安装 gosu 和 curl
+RUN apt-get update && apt-get install -y --no-install-recommends gosu curl && rm -rf /var/lib/apt/lists/*
+
 # 安装依赖
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -19,9 +22,6 @@ COPY . .
 RUN mkdir -p data/multitts && \
     chown -R appuser:appuser /app
 
-# 切换到非 root 用户
-USER appuser
-
 # 暴露端口
 EXPOSE 8501
 
@@ -30,4 +30,4 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8501/ || exit 1
 
 # 使用 Gunicorn 运行应用程序
-CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8501", "main:app"]
+CMD ["/bin/bash", "-c", "chown -R appuser:appuser /app/data && exec gosu appuser gunicorn -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8501 main:app"]
