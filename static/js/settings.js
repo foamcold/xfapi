@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let authKey = localStorage.getItem('xfapi_key') || '';
 
-    // Check auth
+    // 检查认证
     async function checkAuth() {
         try {
             const res = await fetch('/api/login', {
@@ -43,13 +43,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function loadSettings() {
         try {
-            // Load speakers for dropdown
+            // 加载发音人下拉列表
             const spkRes = await fetch('/api/speakers');
             const speakers = await spkRes.json();
             const spkSelect = document.getElementById('default-speaker');
-            spkSelect.innerHTML = ''; // Clear existing options
+            spkSelect.innerHTML = ''; // 清除现有选项
 
-            // Deduplicate
+            // 去重
             const seen = new Set();
             speakers.forEach(s => {
                 if (!seen.has(s.name)) {
@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
 
-            // Load settings
+            // 加载设置
             const res = await fetch(`/api/settings?key=${authKey}`);
             if (res.ok) {
                 const settings = await res.json();
@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 if (res.ok) {
                     await showAlert('设置已保存');
-                    // If password changed, update local key
+                    // 如果密码已更改，则更新本地密钥
                     if (settings.admin_password && settings.auth_enabled) {
                         authKey = settings.admin_password;
                         localStorage.setItem('xfapi_key', authKey);
@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
                 if (res.ok) {
                     await showAlert('配置重载成功！');
-                    // Reload speakers dropdown
+                    // 重新加载发音人下拉列表
                     loadSettings();
                 } else {
                     const err = await res.json();
@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     checkAuth();
 
-    // Password Toggle
+    // 密码切换
     const togglePassword = document.getElementById('toggle-password');
     const passwordInput = document.getElementById('admin-password');
 

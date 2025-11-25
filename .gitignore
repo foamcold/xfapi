@@ -1,13 +1,13 @@
-# Data directory
+# 数据目录
 data/*
 !data/settings.example.yaml
 
-# Python
+# Python 相关
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Environment
+# 环境相关
 .env
 .venv
 env/

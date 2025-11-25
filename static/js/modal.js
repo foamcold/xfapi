@@ -1,7 +1,7 @@
 
-// Custom Modal Logic
+// 自定义模态框逻辑
 
-// Inject Modal HTML
+// 注入模态框 HTML
 const modalHTML = `
 <div id="custom-modal-overlay" class="custom-modal-overlay">
     <div class="custom-modal">
@@ -62,6 +62,6 @@ function closeModal(result) {
     }
 }
 
-// Expose global functions
+// 暴露全局函数
 window.showAlert = (message, title = '提示') => showModal(title, message, 'alert');
 window.showConfirm = (message, title = '确认') => showModal(title, message, 'confirm');

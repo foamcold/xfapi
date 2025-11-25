@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let selectedSpeaker = null;
     let authKey = localStorage.getItem('xfapi_key') || '';
 
-    // Check auth
+    // 检查认证
     async function checkAuth() {
         try {
             const res = await fetch('/api/login', {
@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const res = await fetch('/api/speakers');
             const rawSpeakers = await res.json();
 
-            // Deduplicate: keep first occurrence of each name
+            // 去重：保留每个名称第一次出现时的记录
             const seen = new Set();
             speakers = [];
             for (const spk of rawSpeakers) {
@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
 
-            // Load defaults first to get has_avatars
+            // 首先加载默认值以获取 has_avatars
             let hasAvatars = false;
             try {
                 const settingsRes = await fetch(`/api/settings?key=${authKey}`);
@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     document.getElementById('volume-val').textContent = settings.default_volume || 100;
                     document.getElementById('audio-type').value = settings.default_audio_type || 'audio/mp3';
 
-                    // Select default speaker
+                    // 选择默认发音人
                     const defaultSpeakerName = settings.default_speaker;
                     const defaultSpk = speakers.find(s => s.name === defaultSpeakerName);
                     if (defaultSpk) {
@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.error('Failed to load settings', e);
             }
 
-            // Initial render
+            // 初始渲染
             filterAndRender();
 
         } catch (e) {
@@ -102,11 +102,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const localeVal = document.getElementById('locale-filter').value;
 
         const filtered = speakers.filter(spk => {
-            // Search filter
+            // 搜索过滤器
             if (searchVal && !spk.name.toLowerCase().includes(searchVal)) {
                 return false;
             }
-            // Locale filter
+            // 语言环境过滤器
             if (localeVal !== 'all') {
                 const loc = (spk.locale || '').toLowerCase();
                 if (localeVal === 'zh') {
@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function renderSpeakers(list) {
         speakerList.innerHTML = '';
-        // Note: No sorting here to preserve config order
+        // 注意：此处不进行排序以保留配置顺序
 
         list.forEach(spk => {
             const card = document.createElement('div');
@@ -134,10 +134,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 card.classList.add('selected');
             }
 
-            // Avatar logic
+            // 头像逻辑
             let avatarHtml = '';
             if (spk.avatar && window.hasAvatars) {
-                // Try multitts path first
+                // 首先尝试 multitts 路径
                 const avatarUrl = `/multitts/xfpeiyin/avatar/${spk.avatar}`;
                 avatarHtml = `<img src="${avatarUrl}" class="speaker-avatar" onerror="this.onerror=null;this.outerHTML='<div class=\\'speaker-avatar\\' style=\\'display:flex;justify-content:center;align-items:center;color:#fff;font-size:1.2rem;\\'>${spk.name[0]}</div>'">`;
             } else {
@@ -161,7 +161,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function selectSpeaker(spk) {
         selectedSpeaker = spk;
         document.querySelectorAll('.speaker-card').forEach(c => c.classList.remove('selected'));
-        // Re-render to highlight (inefficient but simple)
+        // 重新渲染以突出显示（效率不高但简单）
         const cards = speakerList.children;
         for (let i = 0; i < cards.length; i++) {
             const name = cards[i].querySelector('.speaker-name').textContent;
@@ -172,7 +172,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // Handle extendUI
+        // 处理 extendUI
         renderExtendUI(spk);
     }
 
@@ -230,7 +230,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     speakerSearch.addEventListener('input', filterAndRender);
     document.getElementById('locale-filter').addEventListener('change', filterAndRender);
 
-    // Sliders
+    // 滑块
     document.getElementById('speed').addEventListener('input', (e) => {
         document.getElementById('speed-val').textContent = e.target.value;
     });
@@ -254,15 +254,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         const volume = parseInt(document.getElementById('volume').value);
         const audioType = document.getElementById('audio-type').value;
 
-        // Handle voice code with style
-        let voiceCode = selectedSpeaker.param; // e.g. '565854553' or '@style'
+        // 处理带风格的语音代码
+        let voiceCode = selectedSpeaker.param; // 例如 '565854553' 或 '@style'
 
         if (voiceCode === '@style') {
             const styleSelect = document.getElementById('extend-style');
             if (styleSelect) {
                 voiceCode = styleSelect.value;
             } else {
-                // Fallback to default value in extendUI if possible
+                // 如果可能，回退到 extendUI 中的默认值
                 try {
                     const uiConfig = JSON.parse(selectedSpeaker.extendUI);
                     const styleItem = uiConfig.find(i => i.code === 'style');

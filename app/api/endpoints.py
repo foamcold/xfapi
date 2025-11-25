@@ -4,8 +4,10 @@ from pydantic import BaseModel
 from typing import Optional
 from app.core.config import config
 from app.services.xf_service import xf_service
+from app.core.logger import log_queue, logger
 import os
 import json
+import asyncio
 
 router = APIRouter()
 
@@ -81,8 +83,8 @@ async def _process_tts(req: TTSRequest):
     volume = req.volume if req.volume is not None else settings.get("default_volume", 100)
     audio_type = req.audio_type or settings.get("default_audio_type", "audio/mp3")
     
-    # Resolve speaker name to code if needed
-    # The API requires the 'param' (code), but user might pass 'name' or default might be a name.
+    # 如果需要，将发音人名称解析为代码
+    # API 需要 'param' (代码)，但用户可能会传递 'name'，或者默认值可能是一个名称。
     speakers = config.get_speakers()
     found_speaker = next((s for s in speakers if s.get("name") == voice), None)
     if found_speaker:
@@ -95,14 +97,14 @@ async def _process_tts(req: TTSRequest):
                     if style_item and style_item.get("value"):
                         voice = style_item["value"]
             except Exception as e:
-                print(f"Error parsing extendUI for speaker {voice}: {e}")
-                # Fallback to param (which is @style, likely to fail but better than crashing here)
+                logger.error(f"解析发音人 {voice} 的 extendUI 时出错: {e}")
+                # 回退到 param (即 @style，很可能会失败，但总比在这里崩溃要好)
                 voice = param
         else:
             voice = param
     
     try:
-        # Use the queue processing method
+        # 使用队列处理方法
         resp = await xf_service.process_tts_request(req.text, voice, speed, volume, audio_type=audio_type)
         
         if req.stream:
@@ -119,9 +121,9 @@ async def get_speakers():
 
 @router.get("/settings")
 async def get_settings(key: Optional[str] = None):
-    # Settings might contain sensitive info like password, so we should protect it or mask it.
-    # But the frontend needs to see it to edit it.
-    # If auth is enabled, we require key.
+    # 设置可能包含密码等敏感信息，因此我们应该保护或屏蔽它。
+    # 但是前端需要看到它才能进行编辑。
+    # 如果启用了身份验证，则需要密钥。
     verify_key(key)
     settings = config.get_settings().copy()
     settings["has_avatars"] = os.path.exists("data/multitts/xfpeiyin/avatar")
@@ -156,7 +158,7 @@ async def update_settings(req: SettingsUpdate):
 
 @router.post("/login")
 async def login(req: dict):
-    # Simple check
+    # 简单检查
     key = req.get("key")
     verify_key(key)
     return {"status": "success"}
@@ -165,5 +167,39 @@ async def login(req: dict):
 async def reload_config(req: dict):
     key = req.get("key")
     verify_key(key)
-    config.reload_config()
-    return {"status": "success", "message": "Configuration reloaded"}
+    try:
+        config.reload_config()
+        logger.info("配置已通过 API 请求重新加载。")
+        return {"status": "success", "message": "Configuration reloaded"}
+    except Exception as e:
+        logger.error(f"通过 API 重新加载配置失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/logs")
+async def stream_logs(request: Request):
+    async def log_generator():
+        # 首先，发送所有历史日志
+        # 使用 list(log_queue) 来避免在迭代时队列发生变化
+        initial_logs = list(log_queue)
+        for log_record in initial_logs:
+            if await request.is_disconnected():
+                break
+            yield f"data: {json.dumps(log_record)}\n\n"
+        
+        # 然后，使用索引来跟踪新日志，这比不断复制列表更高效
+        last_sent_index = len(initial_logs)
+        while True:
+            if await request.is_disconnected():
+                break
+            
+            current_len = len(log_queue)
+            if current_len > last_sent_index:
+                # 切片操作会创建一个新列表，这是安全的
+                new_logs = list(log_queue)[last_sent_index:]
+                for log_record in new_logs:
+                    yield f"data: {json.dumps(log_record)}\n\n"
+                last_sent_index = current_len
+            
+            await asyncio.sleep(0.5) # 每 0.5 秒检查一次新日志
+
+    return StreamingResponse(log_generator(), media_type="text/event-stream")

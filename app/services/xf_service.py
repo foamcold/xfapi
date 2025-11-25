@@ -9,6 +9,7 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from urllib.parse import quote
 from app.core.config import config
+from app.core.logger import logger
 
 import os
 import shutil
@@ -44,7 +45,7 @@ class XFService:
             self.worker_task = asyncio.create_task(self._worker())
 
     def _get_cache_key(self, text: str, voice_code: str, speed: int, volume: int, pitch: int, audio_type: str) -> str:
-        # MD5(text + voice + speed + volume + pitch + type)
+        # 格式为：MD5(text + voice + speed + volume + pitch + type)
         raw = f"{text}_{voice_code}_{speed}_{volume}_{pitch}_{audio_type}"
         return hashlib.md5(raw.encode('utf-8')).hexdigest() + ("." + audio_type.split('/')[-1] if '/' in audio_type else ".mp3")
 
@@ -62,26 +63,26 @@ class XFService:
         files = [f for f in files if os.path.isfile(f)]
         
         if len(files) > limit:
-            # Sort by mtime (oldest first)
+            # 按修改时间排序 (最早的在前)
             files.sort(key=os.path.getmtime)
-            # Delete oldest
+            # 删除最早的文件
             for f in files[:len(files) - limit]:
                 try:
                     os.remove(f)
                 except Exception as e:
-                    print(f"Error cleaning cache file {f}: {e}")
+                    logger.error(f"清理缓存文件 {f} 时出错: {e}")
 
     async def _worker(self):
         while True:
             future, args = await self.queue.get()
             try:
-                # args: (text, voice_code, speed, volume, pitch, audio_type)
+                # 参数: (text, voice_code, speed, volume, pitch, audio_type)
                 text, voice_code, speed, volume, pitch, audio_type = args
                 
                 url = self.get_audio_url(*args)
                 resp = self.get_audio_stream(url)
                 
-                # Save to cache if enabled
+                # 如果启用了缓存，则保存到缓存
                 limit = config.get_settings().get("cache_limit", 100)
                 if limit > 0:
                     # 确保cache目录存在
@@ -91,13 +92,13 @@ class XFService:
                     cache_key = self._get_cache_key(*args)
                     cache_path = os.path.join(self.CACHE_DIR, cache_key)
                     
-                    # We need to read the content to save it, but resp is a stream.
-                    # We can stream to file and then re-open for the user?
-                    # Or just save chunks as we iterate? 
-                    # Endpoints expects an iterator.
-                    # Let's save to a temp file first, then move to cache, then serve from cache?
-                    # Or just read all into memory (might be large)?
-                    # Better: Stream to file, then serve file stream.
+                    # 我们需要读取内容以保存它，但 resp 是一个流。
+                    # 我们可以将流式传输到文件，然后为用户重新打开吗？
+                    # 或者只是在迭代时保存块？
+                    # 端点需要一个迭代器。
+                    # 让我们先保存到临时文件，然后移动到缓存，然后从缓存提供服务？
+                    # 或者只是将所有内容读入内存（可能会很大）？
+                    # 更好的办法是：流式传输到文件，然后提供文件流。
                     
                     with open(cache_path, 'wb') as f:
                         for chunk in resp.iter_content(chunk_size=4096):
@@ -106,7 +107,7 @@ class XFService:
                     
                     self._clean_cache()
                     
-                    # Return a mock response that reads from the file
+                    # 返回一个从文件读取的模拟响应
                     class FileStreamResponse:
                         def __init__(self, path):
                             self.path = path
@@ -124,7 +125,7 @@ class XFService:
                     if not future.done():
                         future.set_result(resp)
                 
-                # Wait for configured delay after successful generation
+                # 成功生成后等待配置的延迟
                 delay = config.get_settings().get("generation_interval", 1.0)
                 await asyncio.sleep(float(delay))
                 
@@ -135,7 +136,7 @@ class XFService:
                 self.queue.task_done()
 
     async def process_tts_request(self, text: str, voice_code: str, speed: int, volume: int, pitch: int = 50, audio_type: str = "mp3"):
-        # Check cache first
+        # 首先检查缓存
         limit = config.get_settings().get("cache_limit", 100)
         if limit > 0:
             # 确保cache目录存在
@@ -146,10 +147,10 @@ class XFService:
             cache_path = os.path.join(self.CACHE_DIR, cache_key)
             
             if os.path.exists(cache_path):
-                # Update mtime
+                # 更新修改时间
                 os.utime(cache_path, None)
                 
-                # Return mock response
+                # 返回模拟响应
                 class FileStreamResponse:
                     def __init__(self, path):
                         self.path = path
@@ -161,7 +162,7 @@ class XFService:
                                     break
                                 yield data
                 
-                # Return immediately, bypassing queue
+                # 立即返回，绕过队列
                 return FileStreamResponse(cache_path)
 
         if self.queue is None:
@@ -218,17 +219,17 @@ class XFService:
         return json.loads(decrypted_bytes.decode('utf-8'))
 
     def _process_text_tags(self, text: str, pitch: int, emo: str, emo_value: int = 0) -> str:
-        # Pitch tag: [te50]
-        pitch_tag = f"[te{pitch}]" if pitch != 50 else "" # Assuming 50 is default/neutral? Plugin says: pitch ? '[te' + pitch + ']' : '';
-        # Actually plugin sends it if pitch is truthy. If pitch is 0? 
-        # Let's follow plugin: pitch = pitch ? '[te' + pitch + ']' : '';
-        # But we pass pitch as int. If pitch is 0, it sends nothing?
-        # Let's assume our pitch 50 is standard.
-        # Plugin logic: pitch = pitch ? ...
-        # If we pass pitch, we should add it.
+        # 音高标签: [te50]
+        pitch_tag = f"[te{pitch}]" if pitch != 50 else "" # 假设 50 是默认/中性？插件提示：pitch ? '[te' + pitch + ']' : '';
+        # 实际上，如果 pitch 为真，插件会发送它。如果 pitch 为 0 呢？
+        # 让我们遵循插件的逻辑：pitch = pitch ? '[te' + pitch + ']' : '';
+        # 但是我们传递的 pitch 是整数。如果 pitch 为 0，它会什么都不发送吗？
+        # 让我们假设我们的音高 50 是标准的。
+        # 插件逻辑：pitch = pitch ? ...
+        # 如果我们传递了 pitch，我们应该添加它。
         pitch_tag = f"[te{pitch}]" if pitch is not None else ""
         
-        # Emotion tag: [em{emo}:{emo_value}]
+        # 情绪标签: [em{emo}:{emo_value}]
         emo_tag = f"[em{emo}:{emo_value}]" if emo else ""
         
         return f"{pitch_tag}{emo_tag}{text}"
@@ -236,7 +237,7 @@ class XFService:
     def get_audio_url(self, text: str, voice_code: str, speed: int, volume: int, pitch: int = 50, audio_type: str = "mp3") -> str:
         processed_text = self._process_special_symbols(text)
         
-        # Handle custom voice format (vid_emo)
+        # 处理自定义语音格式 (vid_emo)
         vid = voice_code
         emo = ""
         if "_" in voice_code:
@@ -245,9 +246,9 @@ class XFService:
             if len(parts) > 1:
                 emo = parts[1]
 
-        # Parameter mapping logic
-        # speed: 0-100 -> -200 to 200 (Slope 4)
-        # 100-300 -> 200 to 500 (Slope 1.5)
+        # 参数映射逻辑
+        # 速度: 0-100 -> -200 到 200 (斜率 4)
+        # 100-300 -> 200 到 500 (斜率 1.5)
         sp = int(speed)
         if sp <= 100:
             final_speed = sp * 4 - 200
@@ -256,11 +257,11 @@ class XFService:
             
         final_volume = int(int(volume) * 0.4 - 20)
         
-        # Add tags to text
-        # We default emo_value to 0 as we don't have a slider for it yet
+        # 将标签添加到文本中
+        # 我们将 emo_value 默认设置为 0，因为我们还没有它的滑块
         tagged_text = self._process_text_tags(processed_text, pitch, emo, 0)
         
-        # Calculate hash
+        # 计算哈希值
         txt = tagged_text
         m = hashlib.md5()
         m.update(txt.encode('utf-8'))
@@ -280,7 +281,7 @@ class XFService:
             'Origin': 'https://peiyin.xunfei.cn',
         }
         
-        # Retry loop with backoff
+        # 带退避算法的重试循环
         import time
         import random
         max_retries = 5
@@ -314,16 +315,17 @@ class XFService:
                 return final_url
 
             except Exception as e:
-                print(f"Attempt {attempt + 1} failed: {e}")
-                # Force close session to clear broken connection/SSL state
+                logger.warning(f"签名URL请求尝试 {attempt + 1} 次失败: {e}")
+                # 强制关闭会话以清除损坏的连接/SSL 状态
                 self._close_session()
                 
                 if attempt == max_retries - 1:
+                    logger.error("签名URL请求在多次重试后失败。")
                     raise
                 
-                # Linear backoff with higher base: 2s, 4s, 6s, 8s, 10s... + jitter
+                # 线性退避，基数更高：2s, 4s, 6s, 8s, 10s... + 抖动
                 sleep_time = ((attempt + 1) * 2) + random.uniform(0, 1)
-                print(f"Retrying in {sleep_time:.2f} seconds...")
+                logger.info(f"将在 {sleep_time:.2f} 秒后重试...")
                 time.sleep(sleep_time)
 
     def get_audio_stream(self, url: str):
@@ -339,10 +341,10 @@ class XFService:
         
         for attempt in range(max_retries):
             try:
-                # Create a fresh session for each attempt to ensure no stale connections
+                # 为每次尝试创建一个新的会话，以确保没有过时的连接
                 session = requests.Session()
-                # We can still use HTTPAdapter for standard retries within the session, 
-                # but the outer loop handles the "nuclear option" of a fresh session.
+                # 我们仍然可以在会话中使用 HTTPAdapter 进行标准重试，
+                # 但外层循环处理“核选项”，即创建一个新的会话。
                 retry = Retry(
                     total=3,
                     backoff_factor=1,
@@ -358,14 +360,15 @@ class XFService:
                 return resp
                 
             except Exception as e:
-                print(f"Stream attempt {attempt + 1} failed: {e}")
+                logger.warning(f"音频流请求尝试 {attempt + 1} 次失败: {e}")
                 
                 if attempt == max_retries - 1:
+                    logger.error("音频流请求在多次重试后失败。")
                     raise
                 
-                # Linear backoff with higher base: 2s, 4s, 6s, 8s, 10s... + jitter
+                # 线性退避，基数更高：2s, 4s, 6s, 8s, 10s... + 抖动
                 sleep_time = ((attempt + 1) * 2) + random.uniform(0, 1)
-                print(f"Retrying stream in {sleep_time:.2f} seconds...")
+                logger.info(f"将在 {sleep_time:.2f} 秒后重试音频流...")
                 time.sleep(sleep_time)
 
 xf_service = XFService()
