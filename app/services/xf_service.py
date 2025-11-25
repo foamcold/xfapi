@@ -59,21 +59,36 @@ class XFService:
                 except Exception as e:
                     logger.error(f"清理缓存文件 {f} 时出错: {e}")
 
-    async def _save_to_cache_async(self, resp, cache_path: str, args: tuple):
-        """异步保存音频到缓存"""
-        try:
-            # 在线程池中执行IO操作
-            def save_cache():
-                with open(cache_path, 'wb') as f:
-                    for chunk in resp.iter_content(chunk_size=4096):
+    class CachedStreamResponse:
+        def __init__(self, response, cache_path, service):
+            self.response = response
+            self.cache_path = cache_path
+            self.service = service
+
+        def iter_content(self, chunk_size=4096):
+            # 使用临时文件避免写入未完成的文件被读取
+            temp_path = f"{self.cache_path}.{str(time.time())}.tmp"
+            try:
+                with open(temp_path, 'wb') as f:
+                    for chunk in self.response.iter_content(chunk_size=chunk_size):
                         if chunk:
                             f.write(chunk)
-                self._clean_cache()
-            
-            await asyncio.to_thread(save_cache)
-            logger.debug(f"[缓存] 已保存: {os.path.basename(cache_path)}")
-        except Exception as e:
-            logger.error(f"保存缓存失败: {e}")
+                            yield chunk
+                
+                # 下载完成后重命名
+                if os.path.exists(temp_path):
+                    # 再次检查目标是否存在
+                    if not os.path.exists(self.cache_path):
+                        os.rename(temp_path, self.cache_path)
+                        self.service._clean_cache()
+                        logger.debug(f"[缓存] 已保存: {os.path.basename(self.cache_path)}")
+                    else:
+                        os.remove(temp_path)
+            except Exception as e:
+                logger.error(f"流式缓存出错: {e}")
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                raise
 
     async def process_tts_request(self, text: str, voice_code: str, speed: int, volume: int, pitch: int = 50, audio_type: str = "mp3"):
         """处理TTS请求 - 完全并发,无队列"""
@@ -130,12 +145,11 @@ class XFService:
         else:
             logger.info(f"[TTS] 总耗时: {total_time:.0f}ms")
         
-        # 如果启用缓存,异步保存(不阻塞响应)
+        # 如果启用缓存,使用包装类进行流式保存
         if limit > 0:
             cache_key = self._get_cache_key(text, voice_code, speed, volume, pitch, audio_type)
             cache_path = os.path.join(self.CACHE_DIR, cache_key)
-            # 异步保存,不等待完成
-            asyncio.create_task(self._save_to_cache_async(resp, cache_path, (text, voice_code, speed, volume, pitch, audio_type)))
+            return self.CachedStreamResponse(resp, cache_path, self)
         
         return resp
 
