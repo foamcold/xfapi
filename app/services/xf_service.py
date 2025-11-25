@@ -17,7 +17,7 @@ class XFService:
     AES_KEY = b'G%.g7"Y&Nf^40Ee<'
     SIGN_URL = "https://peiyin.xunfei.cn/web-server/1.0/works_synth_sign"
     SYNTH_URL_BASE = "https://peiyin.xunfei.cn/synth"
-    CACHE_DIR = "cache"
+    CACHE_DIR = "data/cache"
     
     SPECIAL_SYMBOLS_MAP = {
         '#': '井号', '@': '艾特', '&': '和', '*': '星号', '%': '百分号',

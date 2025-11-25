@@ -62,33 +62,41 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
 
+            // Load defaults first to get has_avatars
+            let hasAvatars = false;
+            try {
+                const settingsRes = await fetch(`/api/settings?key=${authKey}`);
+                if (settingsRes.ok) {
+                    const settings = await settingsRes.json();
+                    hasAvatars = settings.has_avatars;
+                    window.hasAvatars = hasAvatars;
+
+                    document.getElementById('speed').value = settings.default_speed || 100;
+                    document.getElementById('speed-val').textContent = settings.default_speed || 100;
+                    document.getElementById('volume').value = settings.default_volume || 100;
+                    document.getElementById('volume-val').textContent = settings.default_volume || 100;
+                    document.getElementById('audio-type').value = settings.default_audio_type || 'audio/mp3';
+
+                    // Select default speaker
+                    const defaultSpeakerName = settings.default_speaker;
+                    const defaultSpk = speakers.find(s => s.name === defaultSpeakerName);
+                    if (defaultSpk) {
+                        selectSpeaker(defaultSpk);
+                    } else if (speakers.length > 0) {
+                        selectSpeaker(speakers[0]);
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load settings', e);
+            }
+
             // Initial render
             filterAndRender();
 
-            // Load defaults
-            const settingsRes = await fetch(`/api/settings?key=${authKey}`);
-            if (settingsRes.ok) {
-                const settings = await settingsRes.json();
-                document.getElementById('speed').value = settings.default_speed || 100;
-                document.getElementById('speed-val').textContent = settings.default_speed || 100;
-                document.getElementById('volume').value = settings.default_volume || 100;
-                document.getElementById('volume-val').textContent = settings.default_volume || 100;
-                document.getElementById('audio-type').value = settings.default_audio_type || 'audio/mp3';
-
-                // Select default speaker
-                const defaultSpeakerName = settings.default_speaker;
-                const defaultSpk = speakers.find(s => s.name === defaultSpeakerName);
-                if (defaultSpk) {
-                    selectSpeaker(defaultSpk);
-                } else if (speakers.length > 0) {
-                    selectSpeaker(speakers[0]);
-                }
-            }
         } catch (e) {
             console.error('Failed to load speakers', e);
         }
     }
-
     function filterAndRender() {
         const searchVal = speakerSearch.value.toLowerCase();
         const localeVal = document.getElementById('locale-filter').value;
@@ -128,10 +136,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Avatar logic
             let avatarHtml = '';
-            if (spk.avatar) {
+            if (spk.avatar && window.hasAvatars) {
                 // Try multitts path first
                 const avatarUrl = `/multitts/xfpeiyin/avatar/${spk.avatar}`;
-                avatarHtml = `<img src="${avatarUrl}" class="speaker-avatar" onerror="this.onerror=null;this.src='';this.parentElement.innerHTML='<div class=\\'speaker-avatar\\' style=\\'display:flex;justify-content:center;align-items:center;color:#fff;font-size:1.2rem;\\'>${spk.name[0]}</div>'">`;
+                avatarHtml = `<img src="${avatarUrl}" class="speaker-avatar" onerror="this.onerror=null;this.outerHTML='<div class=\\'speaker-avatar\\' style=\\'display:flex;justify-content:center;align-items:center;color:#fff;font-size:1.2rem;\\'>${spk.name[0]}</div>'">`;
             } else {
                 avatarHtml = `<div class="speaker-avatar" style="display:flex;justify-content:center;align-items:center;color:#fff;font-size:1.2rem;">${spk.name[0]}</div>`;
             }

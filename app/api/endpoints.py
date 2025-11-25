@@ -123,7 +123,9 @@ async def get_settings(key: Optional[str] = None):
     # But the frontend needs to see it to edit it.
     # If auth is enabled, we require key.
     verify_key(key)
-    return config.get_settings()
+    settings = config.get_settings().copy()
+    settings["has_avatars"] = os.path.exists("data/multitts/xfpeiyin/avatar")
+    return settings
 
 @router.post("/settings")
 async def update_settings(req: SettingsUpdate):

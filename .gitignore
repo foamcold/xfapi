@@ -1,15 +1,16 @@
+# Data directory
+data/*
+!data/settings.example.yaml
+
+# Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
+*.py[cod]
+*$py.class
+
+# Environment
+.env
+.venv
 env/
 venv/
-.venv/
-.env
-.DS_Store
-settings.yaml
 .idea/
 .vscode/
-cache/
-multitts/

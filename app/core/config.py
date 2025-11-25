@@ -24,10 +24,11 @@ class Config:
 
         # Load root config.yaml
         try:
-            with open("config.yaml", "r", encoding="utf-8") as f:
+            with open("data/config.yaml", "r", encoding="utf-8") as f:
                 root_config = yaml.safe_load(f)
                 if root_config and "xfpeiyin" in root_config:
                     self.speakers.extend(root_config["xfpeiyin"])
+
         except FileNotFoundError:
             print("Warning: config.yaml not found.")
         except Exception as e:
@@ -35,7 +36,7 @@ class Config:
 
         # Load multitts/config.yaml
         try:
-            with open("multitts/config.yaml", "r", encoding="utf-8") as f:
+            with open("data/multitts/config.yaml", "r", encoding="utf-8") as f:
                 multitts_config = yaml.safe_load(f)
                 if multitts_config and "xfpeiyin" in multitts_config:
                     self.speakers.extend(multitts_config["xfpeiyin"])
@@ -45,12 +46,12 @@ class Config:
             print(f"Error loading multitts/config.yaml: {e}")
 
         # Load settings.yaml
-        if not os.path.exists("settings.yaml"):
+        if not os.path.exists("data/settings.yaml"):
             print("settings.yaml not found. Attempting to create from default...")
             try:
-                if os.path.exists("settings.example.yaml"):
+                if os.path.exists("data/settings.example.yaml"):
                     import shutil
-                    shutil.copy("settings.example.yaml", "settings.yaml")
+                    shutil.copy("data/settings.example.yaml", "data/settings.yaml")
                     print("Created settings.yaml from settings.example.yaml")
                 else:
                     # Create default settings
@@ -66,14 +67,14 @@ class Config:
                         "default_audio_type": "audio/mp3",
                         "special_symbol_mapping": False
                     }
-                    with open("settings.yaml", "w", encoding="utf-8") as f:
+                    with open("data/settings.yaml", "w", encoding="utf-8") as f:
                         yaml.dump(default_settings, f, allow_unicode=True, sort_keys=False)
                     print("Created default settings.yaml")
             except Exception as e:
                 print(f"Error creating settings.yaml: {e}")
 
         try:
-            with open("settings.yaml", "r", encoding="utf-8") as f:
+            with open("data/settings.yaml", "r", encoding="utf-8") as f:
                 self.settings = yaml.safe_load(f) or {}
         except Exception as e:
             print(f"Error loading settings.yaml: {e}")
@@ -113,7 +114,7 @@ class Config:
             if k not in ordered_keys:
                 ordered_settings[k] = v
                 
-        with open("settings.yaml", "w", encoding="utf-8") as f:
+        with open("data/settings.yaml", "w", encoding="utf-8") as f:
             yaml.dump(ordered_settings, f, allow_unicode=True, sort_keys=False)
 
     def reload_config(self):

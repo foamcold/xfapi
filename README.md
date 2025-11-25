@@ -46,10 +46,10 @@ pip install -r requirements.txt
 复制 `settings.example.yaml` 为 `settings.yaml`：
 
 ```bash
-cp settings.example.yaml settings.yaml
+cp data/settings.example.yaml data/settings.yaml
 ```
 
-根据需要修改 `settings.yaml` 中的配置（如管理密码、默认发音人、端口等）。
+根据需要修改 `data/settings.yaml` 中的配置（如管理密码、默认发音人、端口等）。
 
 ### 4. 启动服务
 
@@ -57,7 +57,7 @@ cp settings.example.yaml settings.yaml
 python main.py
 ```
 
-服务默认运行在 `http://0.0.0.0:8501`（可在 `settings.yaml` 中修改）。
+服务默认运行在 `http://0.0.0.0:8501`（可在 `data/settings.yaml` 中修改）。
 
 ## 🐳 Docker 部署
 
@@ -66,7 +66,7 @@ python main.py
 1.  确保已安装 Docker 和 Docker Compose。
 2.  复制配置文件：
     ```bash
-    cp settings.example.yaml settings.yaml
+    cp data/settings.example.yaml data/settings.yaml
     ```
 3.  启动服务：
     ```bash
@@ -76,20 +76,6 @@ python main.py
 ### 方式二：手动构建运行
 
 1.  构建镜像：
-    ```bash
-    docker build -t xfapi .
-    ```
-2.  运行容器：
-    ```bash
-    docker run -d -p 8501:8501 --name xfapi \
-      -v $(pwd)/settings.yaml:/app/settings.yaml \
-      -v $(pwd)/multitts:/app/multitts \
-      xfapi
-    ```
-
-## 📖 使用说明
-
-### Web 界面
 
 访问 `http://localhost:8501` 即可进入 Web 界面进行语音合成测试。
 访问 `http://localhost:8501/settings_page` 进入设置页面。
@@ -160,8 +146,8 @@ Content-Type: application/json
 本项目完全兼容 MultiTTS 的数据格式。如果您需要使用更多发音人：
 
 1.  请自行获取 **MultiTTS 讯飞配音插件**。
-2.  将插件压缩包解压到项目multitts文件夹内，确保 `multitts` 文件夹位于根目录下（即 `xfapi/multitts/`）。
-3.  重启服务，系统会自动扫描并加载 `multitts` 目录下的所有发音人配置及头像资源。
+2.  将插件压缩包解压到项目 `data/multitts` 文件夹内，确保 `multitts` 文件夹位于 `data` 目录下（即 `xfapi/data/multitts/`）。
+3.  重启服务，系统会自动扫描并加载 `data/multitts` 目录下的所有发音人配置及头像资源。
 
 ## 📂 项目结构
 
@@ -172,11 +158,13 @@ xfapi/
 │   ├── core/                   # 核心配置加载
 │   └── services/               # 业务逻辑 (XFService)
 ├── static/                     # 静态资源 (CSS, JS, HTML)
-├── config.yaml                 # 发音人列表配置
-├── settings.yaml               # 系统设置 (自动生成/忽略)
-├── multitts/                   # 包含发音人头像等资源 (可选)
-│   ├── config.yaml             # 发音人扩展 (可选)
-│   └── xfpeiyin/avatar/        # 发音人头像 (可选)
+├── data/                       # 数据目录
+│   ├── config.yaml             # 发音人列表配置
+│   ├── settings.yaml           # 系统设置 (自动生成/忽略)
+│   ├── cache/                  # 音频缓存
+│   └── multitts/               # 包含发音人头像等资源 (可选)
+│       ├── config.yaml         # 发音人扩展 (可选)
+│       └── xfpeiyin/avatar/    # 发音人头像 (可选)
 ├── main.py                     # 程序入口
 ├── requirements.txt            # 项目依赖
 ├── Dockerfile                  # Docker 构建文件

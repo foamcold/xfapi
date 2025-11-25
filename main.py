@@ -33,9 +33,9 @@ import os
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 # Mount multitts for avatars
-if not os.path.exists("multitts"):
-    os.makedirs("multitts")
-app.mount("/multitts", StaticFiles(directory="multitts"), name="multitts")
+if not os.path.exists("data/multitts"):
+    os.makedirs("data/multitts")
+app.mount("/multitts", StaticFiles(directory="data/multitts"), name="multitts")
 
 @app.get("/")
 async def read_index():
