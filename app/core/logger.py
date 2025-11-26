@@ -115,9 +115,9 @@ def setup_logger():
     logger.addHandler(queue_handler)
     
     # 禁用 uvicorn 的默认访问日志，因为我们将使用自己的格式
-    logging.getLogger("uvicorn.access").propagate = False
-    logging.getLogger("uvicorn.error").propagate = False
-    logging.getLogger("uvicorn").propagate = False
+    # logging.getLogger("uvicorn.access").propagate = False
+    # logging.getLogger("uvicorn.error").propagate = False
+    # logging.getLogger("uvicorn").propagate = False
 
 
 # 在模块加载时就获取一个 logger 实例，以便其他模块可以直接导入使用
