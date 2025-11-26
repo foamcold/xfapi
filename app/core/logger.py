@@ -83,6 +83,8 @@ class QueueHandler(logging.Handler):
     def emit(self, record):
         self.log_queue.append(self.format(record))
 
+from .log_translator import UvicornLogTranslator
+
 def setup_logger():
     """
     配置并获取根日志记录器。
@@ -100,6 +102,10 @@ def setup_logger():
     # 1. 控制台处理器 (带颜色)
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(ColoredFormatter())
+    
+    # 添加翻译过滤器
+    console_handler.addFilter(UvicornLogTranslator())
+    
     logger.addHandler(console_handler)
 
     # 2. 内存队列处理器 (用于Web界面)
