@@ -101,6 +101,7 @@ label {
 input,
 select,
 textarea {
+    color-scheme: dark;
     background: var(--input-bg);
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -532,6 +533,11 @@ input[type=range]::-webkit-slider-runnable-track {
     align-items: center;
     gap: 1rem;
     cursor: pointer;
+}
+
+/* 针对日志页面的垂直布局调整 */
+#toolbar .toggle-switch {
+    gap: 0;
 }
 
 .toggle-input {

@@ -46,7 +46,7 @@ class ColoredFormatter(logging.Formatter):
 import asyncio
 
 class LogQueue:
-    def __init__(self, maxlen=200):
+    def __init__(self, maxlen=2000):
         self._history = deque(maxlen=maxlen)
         self._subscribers = set()
 
@@ -70,7 +70,7 @@ class LogQueue:
         return len(self._history)
 
 # 用于存储日志记录的内存队列
-log_queue = LogQueue(maxlen=200)
+log_queue = LogQueue(maxlen=2000)
 
 class QueueHandler(logging.Handler):
     """

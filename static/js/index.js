@@ -455,6 +455,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function initLogsPage() {
         const logContainer = document.getElementById('log-container');
         const autoRefreshCheckbox = document.getElementById('auto-refresh');
+        const logLimitInput = document.getElementById('log-limit');
         const levelFilter = document.getElementById('level-filter');
         const keywordSearch = document.getElementById('keyword-search');
         let isScrolledToBottom = true;
@@ -483,15 +484,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         function renderLogs() {
             const level = levelFilter.value;
             const keyword = keywordSearch.value.toLowerCase();
+            // 如果输入框为空，则不限制（或者使用默认值，这里使用默认值100，如果用户清空则显示全部可能不太好，还是默认100吧）
+            // 需求是默认100条，如果用户清空，可以理解为不限制或者默认值。
+            // 为了体验，如果为空，我们默认为100。
+            let limitVal = logLimitInput.value;
+            if (limitVal === '') limitVal = 100;
+            const limit = parseInt(limitVal);
+
             if (autoRefreshCheckbox.checked) {
                 logContainer.innerHTML = '';
-                const filteredLogs = allLogs.filter(logData => {
+                let filteredLogs = allLogs.filter(logData => {
                     // We filter based on the raw text content, not the HTML
                     const lowerLog = logData.raw.toLowerCase();
                     const levelMatch = !level || lowerLog.includes(level.toLowerCase());
                     const keywordMatch = !keyword || lowerLog.includes(keyword);
                     return levelMatch && keywordMatch;
                 });
+
+                // Apply limit (take last N)
+                if (filteredLogs.length > limit) {
+                    filteredLogs = filteredLogs.slice(-limit);
+                }
+
                 // Render the filtered HTML content
                 filteredLogs.forEach(logData => addLogLineToDOM(logData.html, true));
             }
@@ -532,6 +546,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 allLogs.push({ html: message, raw: message });
             }
 
+            // Safety cap to prevent memory issues
+            if (allLogs.length > 5000) {
+                allLogs = allLogs.slice(-5000);
+            }
+
             if (autoRefreshCheckbox.checked) {
                 renderLogs();
             }
@@ -540,7 +559,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         logContainer.addEventListener('scroll', () => {
             isScrolledToBottom = logContainer.scrollHeight - logContainer.clientHeight <= logContainer.scrollTop + 1;
         });
+        // Set default value
+        // logLimitInput.value = 100; // Removed to keep it empty by default as per user request
+
         autoRefreshCheckbox.addEventListener('change', renderLogs);
+        logLimitInput.addEventListener('change', renderLogs);
+        logLimitInput.addEventListener('input', renderLogs);
         levelFilter.addEventListener('change', renderLogs);
         keywordSearch.addEventListener('input', renderLogs);
 
