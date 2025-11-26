@@ -33,9 +33,18 @@ async def lifespan(app: FastAPI):
     
     try:
         yield
+    except asyncio.CancelledError:
+        # 在快速关闭时，主应用程序任务可能会被取消。
+        # 这是预期的行为，所以我们可以忽略它。
+        pass
     finally:
         # 应用关闭时，取消后台任务
         banner_task.cancel()
+        try:
+            # 等待任务被实际取消，以避免 "Task exception was never retrieved" 警告
+            await banner_task
+        except asyncio.CancelledError:
+            pass  # 取消是预期的
         logger.info("XFAPI 服务已关闭")
 
 app = FastAPI(title="XFAPI - iFLYTEK TTS Proxy", lifespan=lifespan)
@@ -57,8 +66,14 @@ class LoggingMiddleware:
             if message["type"] == "http.response.start":
                 status_code[0] = message["status"]
             await send(message)
-
-        await self.app(scope, receive, send_wrapper)
+        
+        try:
+            await self.app(scope, receive, send_wrapper)
+        except asyncio.CancelledError:
+            # 在服务器强制关闭期间，活动的流式请求（如日志）会被取消。
+            # 这是预期的行为，所以我们捕获这个异常并直接返回，
+            # 以防止 uvicorn 将其记录为未处理的错误。
+            return
         
         process_time = (time.time() - start_time) * 1000
         
@@ -108,5 +123,7 @@ if __name__ == "__main__":
     port = settings.get("port", 8501)
     
     import uvicorn
+
     # 不再需要自定义 log_config，因为我们用中间件处理了所有请求日志
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True, log_config=None)
+    # timeout_graceful_shutdown=0 禁用优雅关机超时，使其立即退出
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True, log_config=None, timeout_graceful_shutdown=0)
