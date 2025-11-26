@@ -4,6 +4,7 @@ WORKDIR /app
 
 # 设置时区为亚洲/上海
 ENV TZ=Asia/Shanghai
+ENV PYTHONUNBUFFERED=1
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # 安装 gosu 和 curl
@@ -29,5 +30,5 @@ EXPOSE 8501
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8501/ || exit 1
 
-# 使用 Gunicorn 运行应用程序
-CMD ["/bin/bash", "-c", "chown -R appuser:appuser /app/data && exec gosu appuser gunicorn -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8501 main:app"]
+# 使用开发模式运行应用程序 (直接运行 python main.py)
+CMD ["/bin/bash", "-c", "chown -R appuser:appuser /app/data && exec gosu appuser python main.py"]

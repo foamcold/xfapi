@@ -23,8 +23,8 @@ XFAPI 是一个基于 FastAPI 构建的讯飞配音（peiyin.xunfei.cn）逆向 
 
 Docker 部署是最简单且推荐的方式，支持一键启动。
 
-#### 1. 生产模式 (Production)
-适用于服务器部署，默认开启健康检查、非 root 用户运行，使用 Gunicorn 作为高性能服务器。
+#### 1. 启动服务
+默认使用开发模式启动（直接运行 `python main.py`），支持热重载和实时日志输出。
 
 **使用 Docker Compose (推荐):**
 ```bash
@@ -47,19 +47,6 @@ docker run -d \
   -v $(pwd)/data:/app/data \
   --restart unless-stopped \
   xfapi
-```
-
-#### 2. 开发模式 (Development)
-适用于开发调试，支持代码热重载 (Hot Reload)。
-
-修改 `docker-compose.yml`，覆盖启动命令：
-```yaml
-services:
-  xfapi:
-    # ... 其他配置 ...
-    command: python main.py  # 覆盖默认的 gunicorn 命令以启用 reload
-    volumes:
-      - .:/app  # 挂载当前目录以实时同步代码更改
 ```
 
 ---

@@ -124,7 +124,8 @@ class XFService:
                 return FileStreamResponse(cache_path)
         
         # 为本次请求创建一个随机的伪装客户端(步骤1和步骤2共用)
-        client = DisguiseClient(browser="chrome")
+        # 增加超时时间到120秒，防止长文本生成时截断
+        client = DisguiseClient(browser="chrome", timeout=120)
         
         # 步骤1: 获取签名URL (在线程池中执行)
         step1_start = time.time()
@@ -220,7 +221,7 @@ class XFService:
         
         # 如果没有传入客户端，创建一个新的
         if client is None:
-            client = DisguiseClient(browser="chrome")
+            client = DisguiseClient(browser="chrome", timeout=120)
         
         # 重试循环
         max_retries = 5
@@ -271,7 +272,7 @@ class XFService:
         """获取音频流(同步方法)"""
         # 如果没有传入客户端，创建一个新的
         if client is None:
-            client = DisguiseClient(browser="chrome")
+            client = DisguiseClient(browser="chrome", timeout=120)
         
         max_retries = 5
         
